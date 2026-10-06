@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% set active_page = 'macro' %}
+{% block title %}Stocksense AI - MacroPulse{% endblock %}
+{% block content %}
+
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-md">
+<div>
+<h2 class="text-headline-lg-mobile md:text-headline-lg text-on-surface mb-xs">MacroPulse</h2>
+<p class="text-on-surface-variant">Global macroeconomic telemetry, currency benchmarks, and major commodity barometers.</p>
+</div>
+<div class="flex items-center gap-md bg-surface-container-low px-md py-sm rounded-lg border border-white/5 text-sm">
+<div>
+<span class="text-on-surface-variant">USD / INR:</span>
+<span class="font-bold text-primary ml-1">₹{{ usd_inr }}</span>
+</div>
+<div class="w-px h-6 bg-white/10"></div>
+<div>
+<span class="text-on-surface-variant">IST:</span>
+<span class="font-semibold ml-1">{{ ist_time }}</span>
+</div>
+<div class="w-px h-6 bg-white/10"></div>
+<div>
+<span class="text-on-surface-variant">ET:</span>
+<span class="font-semibold ml-1">{{ et_time }}</span>
+</div>
+</div>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md">
+{% for item in macro_data %}
+<div class="glass-panel rounded-xl p-md">
+<div class="flex justify-between items-start mb-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider">{{ item.asset }}</p>
+<span class="text-label-sm font-semibold {{ 'text-emerald-400' if item.change_pct >= 0 else 'text-red-400' }}">
+{{ '%+.2f'|format(item.change_pct) }}%
+</span>
+</div>
+<h3 class="text-headline-md text-on-surface">{{ '{:,.2f}'.format(item.price) }}</h3>
+<div class="mt-sm h-1 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full {{ 'bg-emerald-500' if item.change_pct >= 0 else 'bg-red-500' }}" style="width: {{ [item.change_pct|abs * 15, 100]|min }}%;"></div>
+</div>
+</div>
+{% else %}
+<div class="glass-panel rounded-xl p-lg col-span-3 text-center text-on-surface-variant">
+Macro pulse data is currently synchronizing with global feeds.
+</div>
+{% endfor %}
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+<div class="glass-panel rounded-xl p-lg">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-primary">schedule</span>
+<h3 class="text-headline-md">Market Sessions</h3>
+</div>
+<div class="space-y-md divide-y divide-white/5">
+<div class="flex justify-between items-center pt-md">
+<div>
+<h4 class="font-semibold">National Stock Exchange (NSE)</h4>
+<p class="text-label-sm text-on-surface-variant">Mumbai &bull; 09:15 AM - 03:30 PM IST</p>
+</div>
+<span class="px-3 py-1 rounded-full text-xs font-semibold {{ 'bg-emerald-500/15 text-emerald-400' if nse_open else 'bg-red-500/15 text-red-400' }}">
+{{ 'ACTIVE NOW' if nse_open else 'CLOSED' }}
+</span>
+</div>
+<div class="flex justify-between items-center pt-md">
+<div>
+<h4 class="font-semibold">New York Stock Exchange (NYSE)</h4>
+<p class="text-label-sm text-on-surface-variant">New York &bull; 09:30 AM - 04:00 PM ET</p>
+</div>
+<span class="px-3 py-1 rounded-full text-xs font-semibold {{ 'bg-emerald-500/15 text-emerald-400' if nyse_open else 'bg-red-500/15 text-red-400' }}">
+{{ 'ACTIVE NOW' if nyse_open else 'CLOSED' }}
+</span>
+</div>
+</div>
+</div>
+
+<div class="glass-panel rounded-xl p-lg ai-glow relative border border-primary/20">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-primary">insights</span>
+<h3 class="text-headline-md">Macro Risk Assessment</h3>
+</div>
+<p class="text-body-md text-on-surface-variant leading-relaxed mb-md">
+Commodity volatility in Crude Oil &amp; Gold serves as a leading indicator for equity risk premiums and cross-asset liquidity.
+Exchange rates (USD/INR) reflect capital flows across emerging vs. developed market equities.
+</p>
+<div class="p-md rounded-lg bg-surface-container-low border border-white/5 flex items-center gap-md">
+<span class="material-symbols-outlined text-secondary text-2xl">verified_user</span>
+<div>
+<p class="text-label-sm text-on-surface-variant">Global Cross-Asset Risk Status</p>
+<p class="font-semibold text-on-surface">Balanced / Neutral Liquidity Environment</p>
+</div>
+</div>
+</div>
+</div>
+{% endblock %}

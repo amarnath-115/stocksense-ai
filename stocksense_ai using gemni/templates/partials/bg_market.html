@@ -1,0 +1,57 @@
+<div id="app-bg" class="app-bg-market" aria-hidden="true">
+<style>
+  .app-bg-market{ position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none;
+    background:
+      radial-gradient(ellipse 900px 500px at 22% -5%, rgba(139,123,255,0.10), transparent 60%),
+      radial-gradient(ellipse 800px 500px at 85% 105%, rgba(33,209,159,0.08), transparent 55%),
+      #05070b; }
+  .app-bg-market .bgm-grid{ position:absolute; inset:0;
+    background-image: linear-gradient(rgba(139,123,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(139,123,255,0.045) 1px, transparent 1px);
+    background-size:46px 46px; animation:bgmGridDrift 34s linear infinite; }
+  @keyframes bgmGridDrift{ from{background-position:0 0,0 0;} to{background-position:46px 92px,92px 46px;} }
+  .app-bg-market .bgm-candle{ position:absolute; bottom:0; width:6px; border-radius:2px 2px 0 0; opacity:0.55;
+    transform-origin:bottom center; animation-name:bgmCandleGrow; animation-timing-function:ease-in-out; animation-iteration-count:infinite; }
+  @keyframes bgmCandleGrow{ 0%,100%{transform:scaleY(0.35);} 50%{transform:scaleY(1);} }
+  .app-bg-market .bgm-particle{ position:absolute; border-radius:50%; opacity:0.5; animation-name:bgmFloatUp; animation-timing-function:linear; animation-iteration-count:infinite; }
+  @keyframes bgmFloatUp{ 0%{transform:translateY(0);opacity:0;} 12%{opacity:0.55;} 88%{opacity:0.25;} 100%{transform:translateY(-112vh);opacity:0;} }
+  .app-bg-market .bgm-wave{ position:absolute; inset:0; width:100%; height:100%; opacity:0.5; }
+  .app-bg-market .bgm-wave-bull{ fill:none; stroke:#21d19f; stroke-width:2; stroke-dasharray:14 10; filter:drop-shadow(0 0 6px rgba(33,209,159,0.6)); animation:bgmDashMove 2.6s linear infinite; opacity:0.55; }
+  .app-bg-market .bgm-wave-soft{ fill:none; stroke:#8b7bff; stroke-width:1.2; opacity:0.22; }
+  @keyframes bgmDashMove{ to{ stroke-dashoffset:-96; } }
+  @media (prefers-reduced-motion: reduce){ .app-bg-market *{ animation:none !important; } }
+</style>
+<div class="bgm-grid"></div>
+<svg class="bgm-wave" viewBox="0 0 1200 700" preserveAspectRatio="none">
+  <path class="bgm-wave-soft" d="M0,420 C150,380 300,470 450,410 C600,350 750,460 900,400 C1000,360 1100,430 1200,390"></path>
+  <path class="bgm-wave-bull" d="M0,500 C120,460 220,540 340,480 C460,420 560,530 680,470 C800,410 900,500 1020,450 C1090,420 1150,460 1200,440"></path>
+</svg>
+<div id="bgm-candles"></div>
+<div id="bgm-particles"></div>
+</div>
+<script>
+(function(){
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduceMotion) return;
+  const candleWrap = document.getElementById('bgm-candles');
+  const colors = [ { fill:'rgba(33,209,159,0.45)', glow:'rgba(33,209,159,0.45)' }, { fill:'rgba(255,93,108,0.4)', glow:'rgba(255,93,108,0.4)' } ];
+  const COUNT = 26;
+  for (let i=0;i<COUNT;i++){
+    const el=document.createElement('div'); el.className='bgm-candle';
+    const c=colors[Math.random()<0.58?0:1]; const h=30+Math.random()*140;
+    el.style.left=((i/COUNT)*100+(Math.random()*2-1))+'vw'; el.style.height=h+'px';
+    el.style.background=c.fill; el.style.boxShadow='0 0 8px '+c.glow;
+    const dur=3+Math.random()*3.5; el.style.animationDuration=dur+'s'; el.style.animationDelay=(-Math.random()*dur)+'s';
+    candleWrap.appendChild(el);
+  }
+  const particleWrap = document.getElementById('bgm-particles');
+  const pColors = ['#8b7bff','#21d19f','#5da8ff'];
+  for (let i=0;i<26;i++){
+    const el=document.createElement('div'); el.className='bgm-particle';
+    const size=2+Math.random()*3, color=pColors[Math.floor(Math.random()*pColors.length)], dur=9+Math.random()*12;
+    el.style.left=(Math.random()*100)+'vw'; el.style.bottom='-10px'; el.style.width=size+'px'; el.style.height=size+'px';
+    el.style.background=color; el.style.boxShadow='0 0 6px '+color;
+    el.style.animationDuration=dur+'s'; el.style.animationDelay=(-Math.random()*dur)+'s';
+    particleWrap.appendChild(el);
+  }
+})();
+</script>

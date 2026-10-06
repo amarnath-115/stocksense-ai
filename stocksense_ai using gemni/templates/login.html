@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Stocksense AI - Secure Mobile Sign In</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = { darkMode: "class", theme: { extend: {
+        colors: { primary: "#adc6ff", secondary: "#4cd7f6", tertiary: "#d0bcff",
+        "on-primary": "#002e6a", "surface-container-lowest": "#0a0e14", "surface-container-highest": "#31353c",
+        "on-surface": "#dfe2eb", "on-surface-variant": "#c2c6d6", outline: "#8c909f", "outline-variant": "#424754",
+        error: "#ffb4ab" },
+        fontFamily: { headline: ["Plus Jakarta Sans"], body: ["Inter"] }
+    } } }
+</script>
+<style>
+    .glass-panel { background: rgba(10,14,20,0.75); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    .ai-glow { position: absolute; width: 320px; height: 320px; background: radial-gradient(circle, rgba(77,142,255,0.15) 0%, rgba(10,14,20,0) 70%); border-radius: 50%; pointer-events: none; z-index: -1; }
+    .input-glow:focus-within { border-color: #adc6ff; box-shadow: 0 0 0 1px #adc6ff; }
+    body { background: linear-gradient(180deg, #030c18 0%, #04182c 45%, #052238 75%, #062a42 100%); overflow-x: hidden; }
+
+    /* ---------- ocean scene ---------- */
+    #ocean { position: fixed; inset: 0; z-index: -2; overflow: hidden; pointer-events: none; }
+    .sunrays { position: absolute; top: -10%; left: 50%; width: 140%; height: 80%; transform: translateX(-50%);
+        background: conic-gradient(from 200deg at 50% 0%, rgba(173,198,255,0.16), rgba(173,198,255,0) 12%, rgba(173,198,255,0.10) 22%, rgba(173,198,255,0) 32%, rgba(173,198,255,0.14) 44%, rgba(173,198,255,0) 55%);
+        animation: sway 16s ease-in-out infinite; transform-origin: top center; }
+    @keyframes sway { 0%,100% { transform: translateX(-50%) rotate(-2deg); } 50% { transform: translateX(-50%) rotate(2deg); } }
+
+    .bubble { position: absolute; bottom: -40px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.55), rgba(173,198,255,0.08) 70%); border: 1px solid rgba(255,255,255,0.15); animation: rise linear infinite; }
+    @keyframes rise { 0% { transform: translate(0, 0); opacity: 0; } 8% { opacity: .8; } 100% { transform: translate(var(--drift, 20px), -110vh); opacity: 0; } }
+
+    .critter { position: absolute; opacity: 0.55; filter: drop-shadow(0 0 10px rgba(77,142,255,0.15)); }
+    .fish-drift { animation: fish-swim var(--dur, 26s) linear infinite; }
+    @keyframes fish-swim {
+        0% { transform: translateX(-10vw) translateY(0) scaleX(1); }
+        49% { transform: translateX(70vw) translateY(-18px) scaleX(1); }
+        50% { transform: translateX(70vw) translateY(-18px) scaleX(-1); }
+        99% { transform: translateX(-10vw) translateY(10px) scaleX(-1); }
+        100% { transform: translateX(-10vw) translateY(10px) scaleX(1); }
+    }
+    .jelly { animation: jelly-pulse 4.5s ease-in-out infinite, jelly-drift 22s ease-in-out infinite; }
+    @keyframes jelly-pulse { 0%,100% { transform: scaleY(1); } 50% { transform: scaleY(0.88); } }
+    @keyframes jelly-drift { 0%,100% { margin-left: 0; } 50% { margin-left: 24px; } }
+
+    .seabed { position: absolute; left: 0; right: 0; bottom: 0; height: 14vh; background: linear-gradient(180deg, rgba(4,20,36,0) 0%, #041424 70%); }
+    .kelp { position: absolute; bottom: 0; width: 10px; border-radius: 8px 8px 0 0; background: linear-gradient(180deg, #0d5a4a, #063b30); transform-origin: bottom center; animation: kelp-wave 5s ease-in-out infinite; }
+    @keyframes kelp-wave { 0%,100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+
+    /* ---------- coral silhouettes (abstract, original — not any branded character art) ---------- */
+    .coral-corner { position: absolute; bottom: 0; opacity: 0.75; }
+    .coral-corner.left { left: -20px; }
+    .coral-corner.right { right: -20px; transform: scaleX(-1); }
+    .anemone { position: absolute; bottom: 0; width: 6px; border-radius: 6px 6px 2px 2px; transform-origin: bottom center; animation: kelp-wave 4.2s ease-in-out infinite; }
+
+    /* ---------- swirling school ring (echoes the circular fish vortex in the reference) ---------- */
+    .fish-ring { position: absolute; right: 8%; top: 22%; width: 10px; height: 10px; animation: ring-spin 24s linear infinite; }
+    .fish-ring .ring-fish { position: absolute; top: 0; left: 0; }
+    .fish-ring .ring-fish-counter { animation: ring-face 24s linear infinite; }
+    @keyframes ring-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes ring-face { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+
+    #sound-toggle { transition: background-color .2s, border-color .2s; }
+    #sound-toggle:hover { background: rgba(255,255,255,0.08); }
+
+    @media (prefers-reduced-motion: reduce) {
+        .sunrays, .bubble, .fish-drift, .jelly, .kelp { animation: none !important; }
+    }
+</style>
+</head>
+<body class="text-on-surface font-body min-h-screen flex items-center justify-center p-4 antialiased relative">
+
+<div id="ocean" aria-hidden="true">
+    <div class="sunrays"></div>
+    <div id="bubble-layer"></div>
+    <div id="coral-layer"></div>
+    <div id="critter-layer"></div>
+    <div class="seabed"></div>
+</div>
+
+<button id="sound-toggle" type="button" aria-pressed="true" class="fixed top-5 right-5 z-20 w-10 h-10 rounded-full border border-white/15 flex items-center justify-center text-on-surface-variant hover:text-white bg-black/20 backdrop-blur">
+<span class="material-symbols-outlined text-[18px]">volume_up</span>
+</button>
+
+<div class="ai-glow top-0 left-0"></div>
+<div class="ai-glow bottom-0 right-0" style="background: radial-gradient(circle, rgba(160,120,255,0.12) 0%, rgba(10,14,20,0) 70%);"></div>
+
+<main class="w-full max-w-md mx-auto relative z-10">
+<div class="text-center mb-6">
+<div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-surface-container-highest border border-white/10 mb-5 shadow-lg relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/20 to-tertiary/20"></div>
+<span class="material-symbols-outlined text-[32px] text-primary relative z-10" style="font-variation-settings: 'FILL' 1;">shield_lock</span>
+</div>
+<h1 class="font-headline text-3xl md:text-4xl font-bold mb-2 tracking-tight">Welcome to<br/><span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Stocksense AI</span></h1>
+<p class="text-on-surface-variant max-w-[320px] mx-auto text-xs leading-relaxed">
+    Enterprise fintech analytics with real-time SMS OTP authentication &amp; encrypted user history.
+</p>
+</div>
+
+<div class="glass-panel rounded-2xl p-6 md:p-8 relative overflow-hidden">
+<p id="error-box" class="hidden bg-red-500/15 text-red-300 text-xs rounded-lg px-4 py-2.5 mb-4 border border-red-500/30 flex items-center gap-2">
+    <span class="material-symbols-outlined text-sm shrink-0">error</span>
+    <span id="error-text"></span>
+</p>
+
+<!-- Step 1: Mobile Input -->
+<div class="space-y-5" id="step-1">
+<div class="space-y-2">
+<div class="flex justify-between items-center">
+    <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider" for="mobile">Mobile Number</label>
+    <span class="text-[11px] text-primary font-medium flex items-center gap-1">
+        <span class="material-symbols-outlined text-[13px]">lock</span> Strict OTP Auth
+    </span>
+</div>
+<div class="flex items-center bg-surface-container-lowest rounded-lg border border-outline-variant input-glow transition-all">
+<div class="flex items-center pl-3.5 pr-2 py-3 border-r border-outline-variant text-on-surface-variant text-sm font-semibold">+91</div>
+<input autocomplete="tel" class="w-full bg-transparent border-none text-on-surface focus:ring-0 placeholder:text-outline py-3 px-4 text-sm" id="mobile" placeholder="Enter 10-digit mobile" type="tel" maxlength="15"/>
+</div>
+<p class="text-[11px] text-on-surface-variant">Real SMS OTP will be dispatched to your phone number.</p>
+</div>
+<button class="w-full bg-primary text-on-primary font-semibold py-3 rounded-lg hover:opacity-90 transition-opacity shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-sm" id="send-otp-btn" type="button">
+<span>Send Verification OTP</span> <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+
+<!-- Step 2: OTP Entry -->
+<div class="space-y-5 hidden" id="step-2">
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<div>
+    <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider">6-Digit Code</label>
+    <p id="target-phone-display" class="text-xs text-primary font-medium mt-0.5"></p>
+</div>
+<button class="text-xs text-on-surface-variant hover:text-white underline decoration-dashed" onclick="showStep(1)" type="button">Change</button>
+</div>
+
+<!-- SMS Status Banner -->
+<div id="otp-status-banner" class="text-xs rounded-lg px-3 py-2.5 flex items-start gap-2 border"></div>
+
+<div class="flex justify-between gap-2" id="otp-boxes">
+{% for i in range(6) %}
+<input class="w-full aspect-square text-center bg-surface-container-lowest border border-outline-variant rounded-lg text-xl font-bold focus:border-primary focus:ring-1 focus:ring-primary transition-all p-0 text-primary" maxlength="1" inputmode="numeric" type="text"/>
+{% endfor %}
+</div>
+
+<div class="flex justify-between items-center text-xs pt-1">
+    <span id="countdown-text" class="text-on-surface-variant">Resend in <span id="resend-timer" class="text-primary font-semibold">30</span>s</span>
+    <button id="resend-btn" onclick="resendOtp()" class="text-primary font-semibold hover:underline hidden" type="button">Resend OTP</button>
+</div>
+</div>
+
+<button class="w-full bg-primary text-on-primary font-semibold py-3 rounded-lg hover:opacity-90 transition-opacity shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-sm" id="verify-otp-btn" type="button">
+<span>Verify &amp; Enter</span> <span class="material-symbols-outlined text-[18px]">verified</span>
+</button>
+</div>
+
+<!-- Step 3: Name (New Users Only) -->
+<div class="space-y-5 hidden" id="step-3">
+<div class="space-y-2">
+<div class="flex items-center gap-2">
+    <span class="material-symbols-outlined text-secondary text-lg">badge</span>
+    <h3 class="text-sm font-bold text-on-surface">Welcome! Create Your Profile</h3>
+</div>
+<p class="text-xs text-on-surface-variant">We verified your mobile number. What name should Stocksense AI use for your reports?</p>
+<div class="bg-surface-container-lowest rounded-lg border border-outline-variant input-glow transition-all mt-2">
+<input class="w-full bg-transparent border-none text-on-surface focus:ring-0 placeholder:text-outline py-3 px-4 text-sm" id="name" placeholder="Enter your full name (e.g. Rahul Sharma)" type="text"/>
+</div>
+</div>
+<button class="w-full bg-gradient-to-r from-primary to-secondary text-on-primary font-semibold py-3 rounded-lg hover:opacity-90 transition-opacity shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-sm" id="enter-btn" type="button">
+<span>Complete Setup &amp; Enter</span> <span class="material-symbols-outlined text-[18px]">login</span>
+</button>
+</div>
+</div>
+
+<div class="mt-6 text-center space-y-2">
+<p class="text-[11px] text-on-surface-variant flex items-center justify-center gap-1">
+    <span class="material-symbols-outlined text-[14px] text-emerald-400">verified_user</span>
+    Every session requires mobile OTP authentication for maximum portfolio safety.
+</p>
+<p class="text-[11px] text-on-surface-variant/70">By continuing, you agree to our <a class="text-primary hover:underline" href="#">Terms</a> &amp; <a class="text-primary hover:underline" href="#">Privacy Policy</a></p>
+</div>
+</main>
+
+<script src="{{ url_for('static', filename='js/soundfx.js') }}"></script>
+<script>
+// =====================================================================
+// Ocean scene generator — bubbles, fish, jellyfish, kelp.
+// Everything is drawn with inline SVG / CSS, no external image assets.
+// =====================================================================
+(function buildOceanScene() {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const bubbleLayer = document.getElementById('bubble-layer');
+    const critterLayer = document.getElementById('critter-layer');
+    const coralLayer = document.getElementById('coral-layer');
+
+    // ---- bubbles ----
+    const bubbleCount = reduceMotion ? 0 : 34;
+    for (let i = 0; i < bubbleCount; i++) {
+        const b = document.createElement('div');
+        const size = 3 + Math.random() * 15;
+        b.className = 'bubble';
+        b.style.left = Math.random() * 100 + 'vw';
+        b.style.width = size + 'px';
+        b.style.height = size + 'px';
+        b.style.setProperty('--drift', (Math.random() * 60 - 30) + 'px');
+        b.style.animationDuration = (8 + Math.random() * 11) + 's';
+        b.style.animationDelay = (Math.random() * 14) + 's';
+        bubbleLayer.appendChild(b);
+    }
+
+    // ---- coral silhouettes, bottom corners (original abstract shapes) ----
+    const fanCoral = (id, c1, c2) => `
+        <svg viewBox="0 0 160 140" width="200" height="175">
+          <defs><linearGradient id="${id}" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/>
+          </linearGradient></defs>
+          <g fill="none" stroke="url(#${id})" stroke-width="3" stroke-linecap="round" opacity="0.7">
+            ${Array.from({ length: 11 }, (_, i) => {
+              const a = (-70 + i * 14) * Math.PI / 180;
+              const x = 80 + Math.sin(a) * 95, y = 138 - Math.cos(a) * 95;
+              return `<path d="M80 138 Q${80 + Math.sin(a) * 50} ${138 - Math.cos(a) * 60}, ${x} ${y}" />`;
+            }).join('')}
+          </g>
+        </svg>`;
+    const branchCoral = (id, c1, c2) => `
+        <svg viewBox="0 0 120 130" width="130" height="140">
+          <defs><linearGradient id="${id}" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/>
+          </linearGradient></defs>
+          <g fill="none" stroke="url(#${id})" stroke-width="7" stroke-linecap="round" opacity="0.72">
+            <path d="M20 130 C20 90 10 70 20 40 M20 130 C30 95 45 80 40 45 M50 130 C50 85 60 60 55 20 M50 130 C60 100 78 85 80 55 M80 130 C82 95 100 80 96 50"/>
+          </g>
+        </svg>`;
+
+    if (coralLayer) {
+        const left = document.createElement('div');
+        left.className = 'coral-corner left';
+        left.innerHTML = fanCoral('cf1', '#ff8fb3', '#7c4fe0') + branchCoral('cb1', '#3fd0c9', '#0a6e63');
+        left.style.display = 'flex';
+        left.style.alignItems = 'flex-end';
+        coralLayer.appendChild(left);
+
+        const right = document.createElement('div');
+        right.className = 'coral-corner right';
+        right.innerHTML = fanCoral('cf2', '#ffb37a', '#c94f8f') + branchCoral('cb2', '#4cd7f6', '#0d4f8f');
+        right.style.display = 'flex';
+        right.style.alignItems = 'flex-end';
+        coralLayer.appendChild(right);
+
+        // swaying anemone strands scattered along the front edge
+        for (let i = 0; i < 14; i++) {
+            const a = document.createElement('div');
+            a.className = 'anemone';
+            const hue = ['#ff8fb3', '#4cd7f6', '#c9a2ff', '#ffb37a'][i % 4];
+            a.style.left = (4 + Math.random() * 92) + '%';
+            a.style.height = (14 + Math.random() * 26) + 'px';
+            a.style.background = `linear-gradient(180deg, ${hue}, transparent)`;
+            a.style.animationDelay = (Math.random() * 4) + 's';
+            a.style.opacity = 0.5;
+            coralLayer.appendChild(a);
+        }
+    }
+
+    // ---- original reef-fish illustrations: rounded shaded body, forked tail,
+    // layered dorsal/pectoral/pelvic fins, soft gloss highlight, expressive eye.
+    // Three species-style palettes/patterns so the school reads as varied, not copy-pasted.
+    const fishSVG = (grad, species) => {
+        species = species || 'tang';
+        const defs = {
+            tang: {
+                body: ['#5be0ff', '#0a5f9e'], tail: '#ffd23f', fin: '#bdf0ff',
+                mask: '#0b2540', pattern: 'mask',
+            },
+            clown: {
+                body: ['#ffb35c', '#e8590c'], tail: '#ff7a1a', fin: '#ffffff',
+                mask: '#1c0e02', pattern: 'stripes',
+            },
+            butterfly: {
+                body: ['#fff3b0', '#f2b400'], tail: '#ffe37a', fin: '#fff7d6',
+                mask: '#1c1c1c', pattern: 'eyebar',
+            },
+        }[species];
+
+        const pattern = {
+            mask: `<path d="M9 13 C13 9 18 8 22 10 C18 13 16 17 16 21 C16 25 18 28 22 31 C18 32 13 30 9 26 C7 22 7 17 9 13 Z" fill="${defs.mask}" opacity="0.85"/>`,
+            stripes: `
+              <path d="M19 4 C16 10 15 16 16 22 C16 27 18 32 21 36 L26 35 C23 30 21 25 21 20 C21 15 23 9 26 4 Z" fill="#ffffff" opacity="0.97"/>
+              <path d="M35 3 C32 10 31 17 32 23 C32 28 34 33 37 37 L42 36 C39 30 37 25 37 19 C37 13 39 8 42 3 Z" fill="#ffffff" opacity="0.97"/>
+              <path d="M19 4 C16 10 15 16 16 22 C16 27 18 32 21 36" stroke="#7a2e02" stroke-width="1" fill="none" opacity="0.5"/>
+              <path d="M35 3 C32 10 31 17 32 23 C32 28 34 33 37 37" stroke="#7a2e02" stroke-width="1" fill="none" opacity="0.5"/>`,
+            eyebar: `<path d="M14 4 C11 10 10 16 11 22 C11 26 13 30 15 33 L20 32 C18 27 17 22 17 18 C17 13 18 8 20 4 Z" fill="${defs.mask}" opacity="0.9"/>
+                     <circle cx="50" cy="20" r="5" fill="${defs.mask}" opacity="0.55"/>
+                     <circle cx="50" cy="20" r="2.4" fill="#2a2a2a" opacity="0.7"/>`,
+        }[defs.pattern];
+
+        return `
+        <svg viewBox="0 0 82 42" width="60" height="31">
+          <defs>
+            <linearGradient id="${grad}b" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="${defs.body[0]}"/><stop offset="100%" stop-color="${defs.body[1]}"/>
+            </linearGradient>
+            <linearGradient id="${grad}t" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="${defs.tail}" stop-opacity="0.95"/><stop offset="100%" stop-color="${defs.tail}" stop-opacity="0.55"/>
+            </linearGradient>
+          </defs>
+
+          <!-- tail (forked, drawn first so the body overlaps its base) -->
+          <path d="M56 21 C63 12 72 7 79 4 C74 14 71 19 70 21 C71 23 74 28 79 38 C72 35 63 30 56 21 Z"
+                fill="url(#${grad}t)" stroke="${defs.tail}" stroke-width="0.6" opacity="0.92"/>
+
+          <!-- dorsal fin (peeks above the body outline) -->
+          <path d="M26 7 C32 -5 44 -5 50 7 C44 3 32 3 26 7 Z" fill="${defs.fin}" opacity="0.55"/>
+
+          <!-- body -->
+          <path d="M8 21 C8 9 21 4 36 4 C48 4 55 10 58 21 C55 32 48 38 36 38 C21 38 8 33 8 21 Z"
+                fill="url(#${grad}b)" stroke="rgba(0,0,0,0.18)" stroke-width="0.6"/>
+
+          <!-- gloss highlight -->
+          <ellipse cx="24" cy="12" rx="11" ry="5" fill="#ffffff" opacity="0.22"/>
+
+          <!-- species pattern -->
+          ${pattern}
+
+          <!-- pectoral fin -->
+          <path d="M26 22 C21 20 17 21 13 25 C17 27 21 27 26 25 C25 24 25 23 26 22 Z" fill="${defs.fin}" opacity="0.75"/>
+          <!-- pelvic fin -->
+          <path d="M30 33 C27 37 27 40 29 42 C32 39 34 37 34 33 Z" fill="${defs.fin}" opacity="0.6"/>
+
+          <!-- gill line -->
+          <path d="M18 12 C16 16 16 22 18 27" stroke="rgba(0,0,0,0.2)" stroke-width="1" fill="none"/>
+
+          <!-- eye -->
+          <circle cx="15" cy="15" r="4.2" fill="#fff" opacity="0.9"/>
+          <circle cx="15" cy="15" r="2.6" fill="#0a1420"/>
+          <circle cx="16" cy="13.8" r="0.9" fill="#fff"/>
+
+          <!-- mouth -->
+          <path d="M8.5 22 C7 22.6 6.2 23.4 6 24.2" stroke="rgba(0,0,0,0.35)" stroke-width="1" fill="none" stroke-linecap="round"/>
+        </svg>`;
+    };
+    const FISH_SPECIES = ['tang', 'clown', 'butterfly'];
+
+    const jellySVG = `
+        <svg viewBox="0 0 40 56" width="34" height="48">
+          <defs><radialGradient id="jg" cx="50%" cy="30%" r="70%">
+            <stop offset="0%" stop-color="#d0bcff" stop-opacity="0.85"/><stop offset="100%" stop-color="#4cd7f6" stop-opacity="0.25"/>
+          </radialGradient></defs>
+          <path d="M4 22 C4 8, 36 8, 36 22 C36 28, 30 28, 20 28 C10 28, 4 28, 4 22 Z" fill="url(#jg)"/>
+          <path d="M10 28 Q10 42 8 54 M18 28 Q19 44 17 55 M26 28 Q27 42 25 53 M32 28 Q33 40 31 50" stroke="#adc6ff" stroke-width="1.4" fill="none" opacity="0.6" stroke-linecap="round"/>
+        </svg>`;
+
+    // ---- starfish (rests on the sand) ----
+    const starfishSVG = (grad, hue1, hue2) => `
+        <svg viewBox="0 0 44 44" width="30" height="30">
+          <defs><radialGradient id="${grad}" cx="50%" cy="40%" r="65%">
+            <stop offset="0%" stop-color="${hue1}"/><stop offset="100%" stop-color="${hue2}"/>
+          </radialGradient></defs>
+          <path fill="url(#${grad})" d="M22 1 L27 15 L41 12 L31 22 L38 36 L22 28 L6 36 L13 22 L3 12 L17 15 Z"/>
+          <circle cx="22" cy="20" r="3" fill="rgba(0,0,0,0.15)"/>
+        </svg>`;
+
+    // ---- seahorse (drifts gently near the kelp) ----
+    const seahorseSVG = (grad, hue1, hue2) => `
+        <svg viewBox="0 0 40 70" width="26" height="46">
+          <defs><linearGradient id="${grad}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${hue1}"/><stop offset="100%" stop-color="${hue2}"/>
+          </linearGradient></defs>
+          <path fill="url(#${grad})" d="M20 4 C28 4 30 12 26 16 C33 18 33 28 27 31 C33 34 31 44 24 46 C28 50 26 58 19 60 C12 62 8 56 10 50 C4 50 2 44 6 40 C0 38 0 30 6 28 L14 30 C10 24 12 16 18 14 C14 12 14 6 20 4 Z"/>
+          <circle cx="22" cy="12" r="1.8" fill="#06131f"/>
+          <path d="M6 40 C2 42 2 48 6 52 M6 44 C3 46 3 50 6 53" stroke="${hue2}" stroke-width="1.4" fill="none" opacity="0.7"/>
+        </svg>`;
+
+    if (!reduceMotion) {
+
+        // a loose "school" of 8 fish, mixed species, drifting left-to-right at different heights/speeds
+        for (let i = 0; i < 8; i++) {
+            const wrap = document.createElement('div');
+            wrap.className = 'critter fish-drift';
+            wrap.style.top = (8 + Math.random() * 60) + 'vh';
+            wrap.style.setProperty('--dur', (18 + Math.random() * 18) + 's');
+            wrap.style.animationDelay = (-Math.random() * 24) + 's';
+            const species = FISH_SPECIES[i % FISH_SPECIES.length];
+            wrap.innerHTML = fishSVG('fg' + i, species);
+            critterLayer.appendChild(wrap);
+        }
+
+        // a tight swirling ring of tiny fish, echoing the circular school in the reference video
+        const ring = document.createElement('div');
+        ring.className = 'fish-ring';
+        const ringCount = 10;
+        for (let i = 0; i < ringCount; i++) {
+            const angle = (360 / ringCount) * i;
+            const radius = 70 + (i % 3) * 14;
+            const rf = document.createElement('div');
+            rf.className = 'ring-fish';
+            rf.style.transform = `rotate(${angle}deg) translateX(${radius}px)`;
+            const counter = document.createElement('div');
+            counter.className = 'ring-fish-counter';
+            counter.style.width = '26px';
+            counter.style.transform = `rotate(-${angle}deg) scale(0.55)`;
+            counter.innerHTML = fishSVG('rf' + i, FISH_SPECIES[i % FISH_SPECIES.length]);
+            rf.appendChild(counter);
+            ring.appendChild(rf);
+        }
+        critterLayer.appendChild(ring);
+
+        // four jellyfish, gently pulsing, spaced around the scene
+        [
+            { left: '7vw', top: '64vh', delay: '0s' },
+            { left: '86vw', top: '60vh', delay: '-2s' },
+            { left: '46vw', top: '12vh', delay: '-3.4s' },
+            { left: '20vw', top: '30vh', delay: '-1.2s' },
+        ].forEach((pos, i) => {
+            const j = document.createElement('div');
+            j.className = 'critter jelly';
+            j.style.left = pos.left;
+            j.style.top = pos.top;
+            j.style.animationDelay = pos.delay;
+            if (i >= 2) j.style.opacity = '0.35';
+            j.innerHTML = jellySVG;
+            critterLayer.appendChild(j);
+        });
+
+        // kelp strands along the bottom
+        const seabed = document.querySelector('.seabed');
+        for (let i = 0; i < 12; i++) {
+            const k = document.createElement('div');
+            k.className = 'kelp';
+            k.style.left = (i * 8.5 + Math.random() * 5) + '%';
+            k.style.height = (36 + Math.random() * 64) + 'px';
+            k.style.animationDelay = (Math.random() * 5) + 's';
+            seabed.appendChild(k);
+        }
+
+        // starfish resting on the sand
+        const starHues = [['#ff8fb3', '#c94f8f'], ['#ffb37a', '#c9701f'], ['#c9a2ff', '#7c4fe0']];
+        for (let i = 0; i < 4; i++) {
+            const st = document.createElement('div');
+            st.className = 'critter';
+            st.style.bottom = (1 + Math.random() * 4) + 'vh';
+            st.style.left = (6 + i * 24 + Math.random() * 10) + '%';
+            st.style.opacity = '0.65';
+            st.style.transform = `rotate(${Math.random() * 40 - 20}deg)`;
+            const [h1, h2] = starHues[i % starHues.length];
+            st.innerHTML = starfishSVG('sf' + i, h1, h2);
+            critterLayer.appendChild(st);
+        }
+
+        // a couple of seahorses bobbing gently near the kelp beds
+        const seahorseHues = [['#4cd7f6', '#0d4f8f'], ['#ffe37a', '#c9701f']];
+        [{ left: '30vw', top: '58vh' }, { left: '72vw', top: '46vh' }].forEach((pos, i) => {
+            const sh = document.createElement('div');
+            sh.className = 'critter jelly'; // reuse the same gentle pulse/drift animation
+            sh.style.left = pos.left;
+            sh.style.top = pos.top;
+            sh.style.animationDelay = (-i * 2.6) + 's';
+            sh.style.opacity = '0.6';
+            const [h1, h2] = seahorseHues[i % seahorseHues.length];
+            sh.innerHTML = seahorseSVG('sh' + i, h1, h2);
+            critterLayer.appendChild(sh);
+        });
+    }
+})();
+
+// =====================================================================
+// Existing auth logic (unchanged) + sound hooks
+// =====================================================================
+const sfx = new SoundFX('ocean');
+sfx.setAmbientTrack("{{ url_for('static', filename='audio/login_ambient.mp3') }}", 0.40);
+sfx.bindUI('sound-toggle');
+
+let currentMobile = '';
+let isExistingUser = false;
+let resendInterval = null;
+
+function showStep(n) {
+    document.querySelectorAll('[id^="step-"]').forEach(el => el.classList.add('hidden'));
+    document.getElementById('step-' + n).classList.remove('hidden');
+    clearError();
+}
+
+function showError(msg) {
+    const box = document.getElementById('error-box');
+    document.getElementById('error-text').textContent = msg;
+    box.classList.remove('hidden');
+    sfx.error();
+}
+
+function clearError() {
+    document.getElementById('error-box').classList.add('hidden');
+}
+
+function startCountdown(seconds = 30) {
+    clearInterval(resendInterval);
+    let rem = seconds;
+    const timerSpan = document.getElementById('resend-timer');
+    const countWrap = document.getElementById('countdown-text');
+    const resendBtn = document.getElementById('resend-btn');
+    countWrap.classList.remove('hidden');
+    resendBtn.classList.add('hidden');
+    timerSpan.textContent = rem;
+
+    resendInterval = setInterval(() => {
+        rem--;
+        if (rem <= 0) {
+            clearInterval(resendInterval);
+            countWrap.classList.add('hidden');
+            resendBtn.classList.remove('hidden');
+        } else {
+            timerSpan.textContent = rem;
+        }
+    }, 1000);
+}
+
+async function requestOtp() {
+    clearError();
+    const rawMobile = document.getElementById('mobile').value.trim();
+    if (rawMobile.length < 7) {
+        showError('Enter a valid 10-digit mobile number');
+        return;
+    }
+    currentMobile = rawMobile;
+    const sendBtn = document.getElementById('send-otp-btn');
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<span class="material-symbols-outlined animate-spin text-sm">progress_activity</span> Sending OTP...';
+
+    try {
+        const res = await fetch('/api/auth/send-otp', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ mobile: rawMobile })
+        });
+        const data = await res.json();
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<span>Send Verification OTP</span> <span class="material-symbols-outlined text-[18px]">arrow_forward</span>';
+
+        if (!data.ok) {
+            showError(data.error || 'Failed to dispatch OTP');
+            return;
+        }
+
+        isExistingUser = data.is_existing_user;
+        document.getElementById('target-phone-display').textContent = 'Sent to: +91 ' + rawMobile;
+
+        const banner = document.getElementById('otp-status-banner');
+        if (data.sent) {
+            banner.className = 'text-xs rounded-lg px-3 py-2.5 flex items-start gap-2 border bg-emerald-500/10 text-emerald-300 border-emerald-500/30';
+            banner.innerHTML = `<span class="material-symbols-outlined text-sm shrink-0">sms</span><span>${data.message || 'Real SMS OTP sent to your phone!'}</span>`;
+        } else {
+            banner.className = 'text-xs rounded-lg px-3 py-2.5 flex items-start gap-2 border bg-secondary/10 text-secondary border-secondary/30';
+            banner.innerHTML = `<span class="material-symbols-outlined text-sm shrink-0">info</span><span>${data.message || ('Demo Mode: Verification OTP is ' + data.demo_otp)}</span>`;
+        }
+
+        sfx.success();
+        showStep(2);
+        startCountdown(30);
+        document.querySelectorAll('#otp-boxes input').forEach(i => i.value = '');
+        document.querySelector('#otp-boxes input').focus();
+    } catch (e) {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<span>Send Verification OTP</span> <span class="material-symbols-outlined text-[18px]">arrow_forward</span>';
+        showError('Network connection failed. Please check internet and retry.');
+    }
+}
+
+document.getElementById('send-otp-btn').addEventListener('click', requestOtp);
+
+function resendOtp() {
+    requestOtp();
+}
+
+// 6-box OTP navigation
+const otpInputs = document.querySelectorAll('#otp-boxes input');
+otpInputs.forEach((input, index) => {
+    input.addEventListener('input', function () {
+        this.value = this.value.replace(/[^0-9]/g, '');
+        if (this.value) sfx.type();
+        if (this.value.length >= 1 && index < otpInputs.length - 1) {
+            otpInputs[index + 1].focus();
+        }
+    });
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Backspace' && this.value.length === 0 && index > 0) {
+            otpInputs[index - 1].focus();
+        } else if (e.key === 'Enter') {
+            document.getElementById('verify-otp-btn').click();
+        }
+    });
+    // Handle paste of 6 digits
+    input.addEventListener('paste', function(e) {
+        const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+        if (text.length === 6) {
+            e.preventDefault();
+            otpInputs.forEach((inp, idx) => inp.value = text[idx] || '');
+            otpInputs[5].focus();
+        }
+    });
+});
+
+document.getElementById('verify-otp-btn').addEventListener('click', async () => {
+    clearError();
+    const code = Array.from(otpInputs).map(i => i.value).join('');
+    if (code.length !== 6) {
+        showError('Enter all 6 digits of the OTP code');
+        return;
+    }
+    window._pendingOtp = code;
+
+    // If returning user, submit right away without asking for name!
+    if (isExistingUser) {
+        await finalizeLogin(code, '');
+    } else {
+        // First-time user: ask what to call them
+        showStep(3);
+        document.getElementById('name').focus();
+    }
+});
+
+async function finalizeLogin(otp, name) {
+    const vBtn = document.getElementById('verify-otp-btn');
+    const enterBtn = document.getElementById('enter-btn');
+    if (vBtn) vBtn.disabled = true;
+    if (enterBtn) enterBtn.disabled = true;
+
+    try {
+        const res = await fetch('/api/auth/verify-otp', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                otp: otp,
+                mobile: currentMobile,
+                name: name
+            })
+        });
+        const data = await res.json();
+        if (!data.ok) {
+            if (vBtn) vBtn.disabled = false;
+            if (enterBtn) enterBtn.disabled = false;
+            showStep(2);
+            showError(data.error || 'Verification failed. Please check your code.');
+            return;
+        }
+        sfx.success();
+        // Redirect to dashboard with user context loaded
+        window.location.href = data.redirect || "{{ url_for('dashboard') }}";
+    } catch (e) {
+        if (vBtn) vBtn.disabled = false;
+        if (enterBtn) enterBtn.disabled = false;
+        showError('Network error verifying code. Please try again.');
+    }
+}
+
+document.getElementById('enter-btn').addEventListener('click', async () => {
+    clearError();
+    const name = document.getElementById('name').value.trim();
+    if (!name) {
+        showError('Please enter your name to complete registration');
+        return;
+    }
+    await finalizeLogin(window._pendingOtp, name);
+});
+</script>
+</body>
+</html>

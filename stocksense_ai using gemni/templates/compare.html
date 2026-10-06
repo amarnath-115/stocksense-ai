@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% set active_page = 'compare' %}
+{% block title %}Stocksense AI - Compare Stocks{% endblock %}
+{% block content %}
+
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-md">
+<div>
+<h2 class="text-headline-lg-mobile md:text-headline-lg text-on-surface mb-xs">Compare Stocks</h2>
+<p class="text-on-surface-variant">Select up to 3 companies to analyze side by side across normalized historical returns, fundamental ratios, and AI signals.</p>
+</div>
+</div>
+
+<form method="get" class="glass-panel rounded-xl p-lg" autocomplete="off">
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-md mb-md">
+{% for i in range(3) %}
+<div class="relative">
+<label class="block text-label-sm text-on-surface-variant uppercase tracking-wider mb-xs">Company {{ i + 1 }}{% if i > 0 %} (optional){% endif %}</label>
+<input id="compare-input-{{ i }}" name="ticker" value="{{ tickers[i] if tickers|length > i else '' }}" placeholder="e.g. AAPL, NVDA, RELIANCE.NS" class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"/>
+<div id="compare-dropdown-{{ i }}" class="hidden absolute left-0 top-full mt-2 w-full max-h-72 overflow-y-auto bg-surface-container-lowest border border-white/10 rounded-lg shadow-2xl z-50"></div>
+</div>
+{% endfor %}
+</div>
+<button type="submit" class="bg-primary text-on-primary font-semibold px-lg py-sm rounded-lg hover:opacity-90 transition-opacity text-sm">Compare Companies</button>
+</form>
+
+{% if results %}
+
+<!-- Awards & Highlights Banner -->
+{% if highlights and highlights.best_performer %}
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-md">
+<div class="glass-panel rounded-xl p-md flex items-center gap-md border border-emerald-500/20 bg-emerald-500/5">
+<div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-xl">trending_up</span>
+</div>
+<div>
+<p class="text-xs uppercase font-bold text-on-surface-variant tracking-wider">Top 6M Return</p>
+<h4 class="text-base font-extrabold text-emerald-400">{{ highlights.best_performer }} ({{ '%+.1f'|format(highlights.best_performer_return) }}%)</h4>
+</div>
+</div>
+<div class="glass-panel rounded-xl p-md flex items-center gap-md border border-primary/20 bg-primary/5">
+<div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-xl">shield</span>
+</div>
+<div>
+<p class="text-xs uppercase font-bold text-on-surface-variant tracking-wider">Lowest Volatility</p>
+<h4 class="text-base font-extrabold text-primary">{{ highlights.safest }} ({{ highlights.safest_vol }}% Vol)</h4>
+</div>
+</div>
+<div class="glass-panel rounded-xl p-md flex items-center gap-md border border-purple-500/20 bg-purple-500/5">
+<div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-xl">paid</span>
+</div>
+<div>
+<p class="text-xs uppercase font-bold text-on-surface-variant tracking-wider">Dividend Leader</p>
+<h4 class="text-base font-extrabold text-purple-400">{{ highlights.best_dividend or 'No Dividend' }}</h4>
+</div>
+</div>
+</div>
+{% endif %}
+
+<!-- Normalized Multi-Stock Performance Chart -->
+{% if chart_data and chart_data.datasets %}
+<div class="glass-panel rounded-xl p-lg">
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-md">
+<div>
+<h3 class="text-headline-md">Normalized Performance Comparison (6 Months)</h3>
+<p class="text-xs text-on-surface-variant">Zero-based percentage growth (% return) on a common scale</p>
+</div>
+<span class="text-xs px-2.5 py-1 rounded bg-surface-container-low border border-white/5 text-primary font-semibold">Zero-Baseline %</span>
+</div>
+<div class="h-80 relative">
+<canvas id="compare-chart"></canvas>
+</div>
+</div>
+{% endif %}
+
+<!-- Deep Side-by-Side Analytics Table -->
+<div class="glass-panel rounded-xl p-0 overflow-hidden">
+<div class="p-lg border-b border-white/5 flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">compare_arrows</span>
+<div>
+<h3 class="text-headline-md">Side-by-Side Fundamental &amp; Technical Ratios</h3>
+<p class="text-xs text-on-surface-variant">Cross-asset evaluation of valuation multiples, margins, and AI signals</p>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="text-label-sm text-on-surface-variant uppercase tracking-wider border-b border-white/5 bg-surface-container-low">
+<th class="p-md">Financial Metric</th>
+{% for r in results %}
+<th class="p-md font-bold text-primary text-base">{{ r.ticker }}</th>
+{% endfor %}
+</tr>
+</thead>
+<tbody class="divide-y divide-white/5 text-sm">
+<tr>
+<td class="p-md text-on-surface-variant font-medium">Company Name</td>
+{% for r in results %}<td class="p-md font-semibold">{{ r.name if r.found else '—' }}</td>{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">Sector</td>
+{% for r in results %}<td class="p-md">{{ r.sector if r.found else '—' }}</td>{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">Live Market Price</td>
+{% for r in results %}<td class="p-md font-bold text-on-surface">{{ (('₹' if r.currency=='INR' else '$') ~ r.price ~ ' ' ~ r.currency) if r.found else 'Not found' }}</td>{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">24h Price Change</td>
+{% for r in results %}
+<td class="p-md font-semibold {{ 'text-emerald-400' if r.found and r.change_pct >= 0 else ('text-red-400' if r.found else '') }}">{{ ('%+.2f'|format(r.change_pct) ~ '%') if r.found else '—' }}</td>
+{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">6-Month Cumulative Return</td>
+{% for r in results %}
+<td class="p-md font-bold {{ 'text-emerald-400' if r.found and r.return_6m >= 0 else ('text-red-400' if r.found else '') }}">{{ ('%+.2f'|format(r.return_6m) ~ '%') if r.found and r.return_6m is defined else '—' }}</td>
+{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">1-Month Return</td>
+{% for r in results %}
+<td class="p-md font-semibold {{ 'text-emerald-400' if r.found and r.return_1m >= 0 else ('text-red-400' if r.found else '') }}">{{ ('%+.2f'|format(r.return_1m) ~ '%') if r.found and r.return_1m is defined else '—' }}</td>
+{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">Annualized Volatility (Risk)</td>
+{% for r in results %}<td class="p-md font-semibold text-secondary">{{ (r.ann_vol ~ '%') if r.found and r.ann_vol else '—' }}</td>{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">Beta (Systematic Market Risk)</td>
+{% for r in results %}<td class="p-md font-semibold">{{ r.beta if r.found and r.beta else '1.00' }}</td>{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">Price-to-Book (P/B Ratio)</td>
+{% for r in results %}<td class="p-md">{{ r.pb_ratio if r.found and r.pb_ratio else 'N/A' }}</td>{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">Dividend Yield (%)</td>
+{% for r in results %}<td class="p-md font-semibold text-purple-400">{{ r.dividend_yield if r.found and r.dividend_yield else '0.00%' }}</td>{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">Net Profit Margin</td>
+{% for r in results %}<td class="p-md">{{ r.profit_margin if r.found and r.profit_margin else 'N/A' }}</td>{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">Operating Margin</td>
+{% for r in results %}<td class="p-md">{{ r.operating_margin if r.found and r.operating_margin else 'N/A' }}</td>{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">Trailing P/E Ratio</td>
+{% for r in results %}<td class="p-md">{{ r.pe if r.found else 'N/A' }}</td>{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">News Sentiment</td>
+{% for r in results %}
+<td class="p-md font-semibold {{ 'text-emerald-400' if r.found and r.sent_tag=='Bullish' else ('text-red-400' if r.found and r.sent_tag=='Bearish' else 'text-on-surface-variant') }}">{{ r.sent_tag if r.found else '—' }}</td>
+{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">RSI (14) Momentum</td>
+{% for r in results %}<td class="p-md">{{ r.rsi if r.found else '—' }}</td>{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">AI Recommendation</td>
+{% for r in results %}
+<td class="p-md font-bold {{ 'text-emerald-400' if r.found and r.signal=='BUY' else ('text-red-400' if r.found and r.signal=='SELL' else 'text-secondary') }}">{{ (r.signal ~ ' (' ~ r.prob ~ '%)') if r.found else '—' }}</td>
+{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">Market Capitalization</td>
+{% for r in results %}<td class="p-md">{{ ('$' ~ '{:,}'.format(r.market_cap)) if r.found and r.market_cap else 'N/A' }}</td>{% endfor %}
+</tr>
+<tr>
+<td class="p-md text-on-surface-variant font-medium">52-Week High / Low Range</td>
+{% for r in results %}<td class="p-md text-xs">{{ (r.week_low ~ ' – ' ~ r.week_high) if r.found else 'N/A' }}</td>{% endfor %}
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+{% elif tickers %}
+<div class="glass-panel rounded-xl p-lg text-center">
+<span class="material-symbols-outlined text-error text-3xl mb-2 block">error</span>
+<p class="text-on-surface-variant">Couldn't load data for the tickers entered. Please check symbols and try again.</p>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    for (let i = 0; i < 3; i++) {
+        initTickerAutocomplete(
+            document.getElementById('compare-input-' + i),
+            document.getElementById('compare-dropdown-' + i)
+        );
+    }
+
+    // Initialize Chart.js Multi-Stock Normalized Return Chart
+    {% if chart_data and chart_data.datasets %}
+    const chartData = {{ chart_data | tojson }};
+    const ctx = document.getElementById('compare-chart');
+    if (ctx && chartData && chartData.datasets && chartData.datasets.length > 0) {
+        new Chart(ctx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: chartData.datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#8c909f', font: { size: 11 } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: {
+                            color: '#8c909f',
+                            font: { size: 11 },
+                            callback: function(val) { return (val >= 0 ? '+' : '') + val + '%'; }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: { color: '#dfe2eb', font: { weight: 600 } }
+                    },
+                    tooltip: {
+                        backgroundColor: '#0a0e14',
+                        borderColor: 'rgba(255, 255, 255, 0.15)',
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: function(context) {
+                                const v = context.parsed.y;
+                                return `${context.dataset.label}: ${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    {% endif %}
+});
+</script>
+{% endblock %}
+

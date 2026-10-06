@@ -1,0 +1,135 @@
+<div class="appbg-compare" aria-hidden="true">
+<style>
+.appbg-compare { position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none; }
+.appbg-compare canvas{position:fixed;inset:0;width:100%;height:100%;}
+.appbg-compare .ui{position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 60% 60% at 20% 50%,rgba(16,185,129,0.10),transparent 60%),
+             radial-gradient(ellipse 60% 60% at 80% 50%,rgba(244,63,94,0.09),transparent 60%);}
+</style>
+<canvas id="c-compare"></canvas>
+<div class="ui"></div>
+</div>
+<script>
+(function(){
+  const __reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cv=document.getElementById('c-compare'),ctx=cv.getContext('2d');
+let W=cv.width=innerWidth,H=cv.height=innerHeight;
+window.addEventListener('resize',()=>{W=cv.width=innerWidth;H=cv.height=innerHeight;});
+const r=(a,b)=>a+Math.random()*(b-a);
+const BULL='#10b981',BEAR='#f43f5e',GOLD='#f59e0b',CYAN='#22d3ee';
+
+// VS robots – two teams floating up, bull green vs bear red
+class VSBot{
+  constructor(init,team){
+    this.team=team; // 0=bull 1=bear
+    this.c=team===0?BULL:BEAR;
+    const xzone=team===0?[40,W/2-40]:[W/2+40,W-40];
+    this.x=r(xzone[0],xzone[1]);
+    this.y=init?r(0,H):H+90;
+    this.size=r(18,44);this.vy=-r(0.25,0.7);this.vx=r(-0.2,0.2);
+    this.rot=r(0,6.28);this.rv=r(-0.01,0.01)*(team===0?1:-1);
+    this.pt=r(0,6.28);this.pv=r(0.015,0.035);
+    this.sym=team===0?['▲','$','♟','⬡'][~~r(0,4)]:['▼','₿','◆','⬢'][~~r(0,4)];
+    // shield shape
+    this.sh=team===0?'shield':'spike';
+  }
+  tick(){
+    this.y+=this.vy;this.x+=this.vx;this.rot+=this.rv;this.pt+=this.pv;
+    if(this.y<-120){this.y=H+90;const xz=this.team===0?[40,W/2-40]:[W/2+40,W-40];this.x=r(xz[0],xz[1]);}
+  }
+  draw(){
+    const p=0.75+0.25*Math.sin(this.pt);
+    ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.rot);
+    ctx.globalAlpha=0.35*p;
+    // glow
+    const g=ctx.createRadialGradient(0,0,2,0,0,this.size*1.4);
+    g.addColorStop(0,this.c+'55');g.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(0,0,this.size*1.4,0,6.28);ctx.fillStyle=g;ctx.fill();
+    ctx.globalAlpha=0.45*p;
+    // body
+    ctx.beginPath();
+    if(this.sh==='shield'){
+      ctx.moveTo(0,-this.size);ctx.lineTo(this.size*.7,-this.size*.5);
+      ctx.lineTo(this.size*.7,this.size*.3);ctx.lineTo(0,this.size);
+      ctx.lineTo(-this.size*.7,this.size*.3);ctx.lineTo(-this.size*.7,-this.size*.5);
+    } else {
+      for(let i=0;i<5;i++){
+        const a=i*Math.PI*2/5-Math.PI/2;
+        ctx.lineTo(Math.cos(a)*this.size,Math.sin(a)*this.size);
+      }
+    }
+    ctx.closePath();ctx.strokeStyle=this.c;ctx.lineWidth=1.6;ctx.stroke();
+    ctx.fillStyle=this.c+'1a';ctx.fill();
+    ctx.globalAlpha=0.6*p;ctx.fillStyle=this.c;
+    ctx.font=`bold ${this.size*.55}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(this.sym,0,0);
+    ctx.restore();ctx.globalAlpha=1;
+  }
+}
+
+// central VS divider beam
+class Beam{
+  constructor(){this.t=0;this.pts=Array.from({length:30},(_,i)=>0);}
+  tick(){
+    this.t+=0.04;
+    this.pts=this.pts.map(v=>v+(r(-1.5,1.5))*0.5);
+  }
+  draw(){
+    const cx=W/2;
+    // vertical beam
+    const g=ctx.createLinearGradient(cx,0,cx,H);
+    g.addColorStop(0,'transparent');g.addColorStop(0.2,'rgba(245,158,11,0.25)');
+    g.addColorStop(0.5,'rgba(245,158,11,0.45)');
+    g.addColorStop(0.8,'rgba(245,158,11,0.25)');g.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.moveTo(cx-1,0);ctx.lineTo(cx+1,H);
+    ctx.strokeStyle=GOLD;ctx.lineWidth=2;ctx.globalAlpha=0.5+0.2*Math.sin(this.t);ctx.stroke();
+    ctx.globalAlpha=1;
+    // VS text
+    ctx.save();ctx.translate(cx,H/2);
+    ctx.globalAlpha=0.7+0.3*Math.sin(this.t);
+    const g2=ctx.createRadialGradient(0,0,10,0,0,55);
+    g2.addColorStop(0,'rgba(245,158,11,0.4)');g2.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(0,0,55,0,6.28);ctx.fillStyle=g2;ctx.fill();
+    ctx.font='bold 26px -apple-system,sans-serif';ctx.fillStyle=GOLD;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('VS',0,0);ctx.restore();ctx.globalAlpha=1;
+  }
+}
+
+// floating candlesticks
+class Candle{
+  constructor(init){
+    this.x=r(20,W-20);this.y=init?r(0,H):H+80;
+    this.h=r(30,90);this.w=8;this.wickH=r(10,25);
+    this.up=Math.random()<0.5;this.c=this.up?BULL:BEAR;
+    this.vy=-r(0.3,0.8);this.a=r(0.15,0.4);this.t=r(0,6.28);
+  }
+  tick(){this.y+=this.vy;this.t+=0.03;if(this.y<-110)this.reset();}
+  reset(){this.y=H+80;this.x=r(20,W-20);this.up=Math.random()<0.5;this.c=this.up?BULL:BEAR;}
+  draw(){
+    ctx.save();ctx.globalAlpha=this.a*(0.8+0.2*Math.sin(this.t));
+    ctx.strokeStyle=this.c;ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(this.x,this.y-this.h/2-this.wickH);ctx.lineTo(this.x,this.y+this.h/2+this.wickH);ctx.stroke();
+    ctx.fillStyle=this.c;ctx.fillRect(this.x-this.w/2,this.y-this.h/2,this.w,this.h);
+    ctx.strokeRect(this.x-this.w/2,this.y-this.h/2,this.w,this.h);
+    ctx.restore();ctx.globalAlpha=1;
+  }
+}
+
+const beam=new Beam();
+const bulls=Array.from({length:14},(_,i)=>new VSBot(true,0));
+const bears=Array.from({length:14},(_,i)=>new VSBot(true,1));
+const candles=Array.from({length:20},(_,i)=>new Candle(true));
+
+function frame(){
+  ctx.fillStyle='#050c0a';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(16,185,129,0.04)';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=56){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=56){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  candles.forEach(c=>{c.tick();c.draw();});
+  bulls.forEach(b=>{b.tick();b.draw();});
+  bears.forEach(b=>{b.tick();b.draw();});
+  beam.tick();beam.draw();
+  if(!__reduceMotion) requestAnimationFrame(frame);}
+frame();
+})();
+</script>

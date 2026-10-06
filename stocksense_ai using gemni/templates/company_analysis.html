@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+{% set active_page = 'company_analysis' %}
+{% block title %}Stocksense AI - Company Analysis{% endblock %}
+{% block content %}
+
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-md">
+<div>
+<h2 class="text-headline-lg-mobile md:text-headline-lg text-on-surface mb-xs">Company Analysis</h2>
+<p class="text-on-surface-variant">AI-driven fundamental metrics, news sentiment, and customizable return forecasts.</p>
+</div>
+<div class="flex gap-2 items-center flex-wrap">
+<form method="get" class="flex gap-2 items-center bg-surface-container-low border border-white/5 rounded-lg p-2 relative" autocomplete="off">
+<div class="relative">
+<input id="ticker-search-input" name="ticker" value="{{ ticker }}" placeholder="Search ticker e.g. AAPL, NVDA" class="bg-transparent border-none text-sm focus:ring-0 w-52"/>
+<div id="ticker-search-dropdown" class="hidden absolute left-0 top-full mt-2 w-80 max-h-80 overflow-y-auto bg-surface-container-lowest border border-white/10 rounded-lg shadow-2xl z-50"></div>
+</div>
+<select name="period" class="bg-surface-container-highest border border-white/10 rounded-md text-sm px-2 py-1">
+{% for p in ['1mo','3mo','6mo','1y','2y'] %}
+<option value="{{ p }}" {{ 'selected' if period==p else '' }}>{{ p }}</option>
+{% endfor %}
+</select>
+<button class="bg-primary text-on-primary text-sm font-semibold px-4 py-1.5 rounded-md">Analyze</button>
+</form>
+{% if found %}
+<a href="{{ url_for('compare', ticker=ticker) }}" class="flex items-center gap-1 text-sm font-semibold text-on-surface-variant border border-white/10 rounded-lg px-4 py-2 hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-lg">compare_arrows</span> Compare
+</a>
+<a href="{{ url_for('forecast_page', ticker=ticker) }}" class="flex items-center gap-1 text-sm font-semibold text-tertiary border border-tertiary/30 bg-tertiary/10 rounded-lg px-4 py-2 hover:bg-tertiary/20 transition-colors">
+<span class="material-symbols-outlined text-lg">psychology</span> Deep Forecast
+</a>
+{% endif %}
+</div>
+</div>
+
+{% if not found %}
+<div class="glass-panel rounded-xl p-lg text-center">
+<span class="material-symbols-outlined text-error text-3xl mb-2 block">error</span>
+<p class="text-on-surface-variant">Couldn't load data for "{{ ticker }}". Check the symbol and try again.</p>
+</div>
+{% else %}
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md">
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Live Price</p>
+<h3 class="text-headline-md text-on-surface">${{ price_usd }}</h3>
+<p class="text-label-sm text-on-surface-variant mt-xs">₹{{ price_inr }} INR</p>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">24h Change</p>
+<h3 class="text-headline-md {{ 'text-emerald-400' if change >= 0 else 'text-red-400' }}">{{ '%+.2f'|format(change_pct) }}%</h3>
+<p class="text-label-sm text-on-surface-variant mt-xs">{{ '%+.2f'|format(change) }} {{ currency }}</p>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">News Sentiment</p>
+<h3 class="text-headline-md {{ 'text-emerald-400' if sent_tag=='Bullish' else ('text-red-400' if sent_tag=='Bearish' else 'text-on-surface-variant') }}">{{ sent_tag }}</h3>
+<p class="text-label-sm text-on-surface-variant mt-xs">VADER: {{ avg_sent }}</p>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">AI Forecast</p>
+<h3 id="forecast-signal" class="text-headline-md {{ 'text-emerald-400' if 'BUY' in signal else ('text-red-400' if 'SELL' in signal else 'text-secondary') }}">{{ signal }}</h3>
+<p class="text-label-sm text-on-surface-variant mt-xs"><span id="forecast-prob">{{ prob }}</span>% probability</p>
+</div>
+</div>
+
+<!-- Customizable AI Forecast Control Panel -->
+<div class="glass-panel rounded-xl p-lg ai-glow relative border border-primary/20">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-primary">tune</span>
+<h3 class="text-headline-md">Custom Return &amp; Duration Calculator</h3>
+</div>
+<p class="text-label-sm text-on-surface-variant mb-lg">
+Manually set your desired target return % and select an investment horizon (1 week up to 1 year). The engine calculates the statistical probability and expected return for {{ ticker }}.
+</p>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-md items-end">
+<div>
+<label class="block text-label-sm text-on-surface-variant uppercase tracking-wider mb-xs">Target Return (%)</label>
+<input id="predict-target-return" type="number" value="{{ target_return or 10.0 }}" step="0.5" class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"/>
+</div>
+<div>
+<label class="block text-label-sm text-on-surface-variant uppercase tracking-wider mb-xs">Time Duration</label>
+<select id="predict-days" class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm">
+<option value="7" {{ 'selected' if horizon_days==7 else '' }}>1 Week (7 Days)</option>
+<option value="30" {{ 'selected' if horizon_days==30 or not horizon_days else '' }}>1 Month (30 Days)</option>
+<option value="90" {{ 'selected' if horizon_days==90 else '' }}>3 Months (90 Days)</option>
+<option value="180" {{ 'selected' if horizon_days==180 else '' }}>6 Months (180 Days)</option>
+<option value="365" {{ 'selected' if horizon_days==365 else '' }}>1 Year (365 Days)</option>
+</select>
+</div>
+<button id="predict-btn" class="bg-primary text-on-primary font-semibold py-sm rounded-lg hover:opacity-90 transition-opacity text-sm">Calculate Probability</button>
+</div>
+
+<div class="mt-lg pt-lg border-t border-white/5 grid grid-cols-1 sm:grid-cols-3 gap-md">
+<div class="bg-surface-container-low p-md rounded-lg border border-white/5">
+<p class="text-label-sm text-on-surface-variant">Probability of Success</p>
+<p id="predict-prob-out" class="text-headline-md text-secondary">{{ prob }}%</p>
+</div>
+<div class="bg-surface-container-low p-md rounded-lg border border-white/5">
+<p class="text-label-sm text-on-surface-variant">Expected Return (Annualized)</p>
+<p id="predict-exp-out" class="text-headline-md {{ 'text-emerald-400' if exp_return >= 0 else 'text-red-400' }}">{{ '%+.2f'|format(exp_return) }}%</p>
+</div>
+<div class="bg-surface-container-low p-md rounded-lg border border-white/5">
+<p class="text-label-sm text-on-surface-variant">Historical Volatility</p>
+<p id="predict-vol-out" class="text-headline-md text-on-surface">{{ volatility }}%</p>
+</div>
+</div>
+<p id="predict-error" class="hidden mt-md text-label-sm text-error"></p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+<div class="glass-panel rounded-xl p-lg col-span-1 lg:col-span-2">
+<div class="flex justify-between items-center mb-md">
+<h3 class="text-headline-md">{{ name }} ({{ ticker }})</h3>
+<span class="text-label-sm text-on-surface-variant bg-surface-container-low px-2 py-1 rounded-md border border-white/5">{{ sector }}</span>
+</div>
+<canvas id="price-chart" height="110"></canvas>
+</div>
+<div class="glass-panel rounded-xl p-lg">
+<h3 class="text-label-md uppercase tracking-widest text-on-surface-variant mb-md">RSI (14) Momentum</h3>
+<div class="flex items-end gap-3 mb-md">
+<h2 class="text-display-lg text-on-surface">{{ latest_rsi }}</h2>
+<span class="text-label-sm px-2 py-1 rounded-md mb-2 {{ 'bg-red-500/15 text-red-400' if rsi_tag=='Overbought' else ('bg-emerald-500/15 text-emerald-400' if rsi_tag=='Oversold' else 'bg-white/5 text-on-surface-variant') }}">{{ rsi_tag }}</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden relative mb-md">
+<div class="absolute inset-y-0 left-[30%] w-[40%] bg-white/5"></div>
+<div class="h-full bg-gradient-to-r from-emerald-500 via-secondary to-red-500" style="width: {{ latest_rsi }}%;"></div>
+</div>
+<p class="text-label-sm text-on-surface-variant leading-relaxed">Below 30 = oversold, above 70 = overbought. Currently in the {{ rsi_tag.lower() }} zone.</p>
+<div class="mt-lg pt-lg border-t border-white/5 space-y-2">
+<div class="flex justify-between text-label-sm"><span class="text-on-surface-variant">Market Cap</span><span>${{ '{:,}'.format(market_cap) if market_cap else 'N/A' }}</span></div>
+<div class="flex justify-between text-label-sm"><span class="text-on-surface-variant">P/E Ratio</span><span>{{ pe }}</span></div>
+<div class="flex justify-between text-label-sm"><span class="text-on-surface-variant">52W High</span><span>{{ week_high }}</span></div>
+<div class="flex justify-between text-label-sm"><span class="text-on-surface-variant">52W Low</span><span>{{ week_low }}</span></div>
+</div>
+</div>
+</div>
+
+<div class="glass-panel rounded-xl p-0">
+<div class="p-lg border-b border-white/5 flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">newspaper</span>
+<h3 class="text-headline-md">News Intelligence</h3>
+</div>
+<div class="divide-y divide-white/5">
+{% for n in news %}
+<div class="p-lg flex justify-between items-start gap-lg">
+<div>
+<p class="text-label-sm text-on-surface-variant mb-1">{{ n.publisher }}</p>
+<a href="{{ n.url }}" target="_blank" class="text-on-surface hover:text-primary transition-colors">{{ n.headline }}</a>
+</div>
+<span class="shrink-0 text-label-sm px-2 py-1 rounded-md {{ 'bg-emerald-500/15 text-emerald-400' if n.sentiment=='Bullish' else ('bg-red-500/15 text-red-400' if n.sentiment=='Bearish' else 'bg-white/5 text-on-surface-variant') }}">{{ n.sentiment }}</span>
+</div>
+{% else %}
+<div class="p-lg text-on-surface-variant text-sm">No recent news headlines available for this asset.</div>
+{% endfor %}
+</div>
+</div>
+
+<!-- BACKEND INSTITUTIONAL COMPANY DOSSIER (STORED IN BACKEND DATABASE) -->
+{% if backend_company %}
+<div class="glass-panel rounded-2xl p-6 md:p-8 border border-primary/20 shadow-2xl relative overflow-hidden bg-gradient-to-b from-surface-container-low to-surface-container-lowest">
+    <div class="absolute -top-24 -right-24 w-80 h-80 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+
+    <!-- Header Badge & Title -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/10 pb-6 mb-6">
+        <div>
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                Permanent Backend Database Storage • Stocksense SQLite Entity
+            </div>
+            <h3 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+                <span>{{ backend_company.name }}</span>
+                <span class="text-sm font-mono px-2.5 py-1 rounded-lg bg-primary/15 text-primary border border-primary/30">{{ backend_company.ticker }}</span>
+            </h3>
+            <p class="text-xs text-on-surface-variant mt-1">
+                {{ backend_company.sector }} &bull; {{ backend_company.industry }}
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+            {% if backend_company.website %}
+            <a href="{{ backend_company.website }}" target="_blank" class="hud-glass px-3.5 py-2 rounded-xl text-xs font-semibold text-primary hover:text-white border border-primary/30 flex items-center gap-1.5 transition">
+                <span class="material-symbols-outlined text-sm">public</span>
+                <span>Official Website</span>
+                <span class="material-symbols-outlined text-xs">open_in_new</span>
+            </a>
+            {% endif %}
+            <button onclick="askCopilotAboutCompany('{{ backend_company.name }}', '{{ backend_company.ticker }}')" class="px-3.5 py-2 rounded-xl bg-primary text-slate-950 font-bold text-xs flex items-center gap-1.5 hover:opacity-90 shadow-md transition">
+                <span class="material-symbols-outlined text-sm">smart_toy</span>
+                <span>Analyze with AI Copilot</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 4 Key Executive Pillars -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="p-4 rounded-xl bg-surface-container-high/60 border border-white/5">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant block mb-1">Key Leadership / Founder</span>
+            <p class="text-sm font-bold text-on-surface flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-primary text-base">person</span>
+                <span>{{ backend_company.founder_ceo }}</span>
+            </p>
+        </div>
+        <div class="p-4 rounded-xl bg-surface-container-high/60 border border-white/5">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant block mb-1">Corporate Headquarters</span>
+            <p class="text-sm font-bold text-on-surface flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-secondary text-base">location_on</span>
+                <span>{{ backend_company.headquarters }}</span>
+            </p>
+        </div>
+        <div class="p-4 rounded-xl bg-surface-container-high/60 border border-white/5">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant block mb-1">Founded &amp; Heritage</span>
+            <p class="text-sm font-bold text-on-surface flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-tertiary text-base">history_edu</span>
+                <span>Est. {{ backend_company.founded_year }}</span>
+            </p>
+        </div>
+        <div class="p-4 rounded-xl bg-surface-container-high/60 border border-white/5">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant block mb-1">Market Capitalization / Tier</span>
+            <p class="text-sm font-bold text-on-surface flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-emerald-400 text-base">account_balance</span>
+                <span>{{ backend_company.market_cap_tier }}</span>
+            </p>
+        </div>
+    </div>
+
+    <!-- Business Summary -->
+    <div class="mb-6 p-5 rounded-xl bg-surface-container-high/40 border border-white/5">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-primary mb-2 flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-sm">business_center</span> Business Model &amp; Operational Overview
+        </h4>
+        <p class="text-sm text-on-surface leading-relaxed whitespace-pre-line">
+            {{ backend_company.business_summary }}
+        </p>
+    </div>
+
+    <!-- Products & Market Presence Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Key Products & Offerings -->
+        <div class="p-5 rounded-xl bg-surface-container-high/40 border border-white/5 flex flex-col justify-between">
+            <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-3 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm">diamond</span> Core Product Portfolio &amp; Offerings
+                </h4>
+                <div class="flex flex-wrap gap-2">
+                    {% for item in backend_company.key_products.split(',') %}
+                    <span class="text-xs px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-on-surface font-medium flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                        {{ item.strip() }}
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Market Footprint & Distribution -->
+        <div class="p-5 rounded-xl bg-surface-container-high/40 border border-white/5 flex flex-col justify-between">
+            <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-purple-400 mb-3 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm">store</span> Showroom Network &amp; Market Presence
+                </h4>
+                <p class="text-xs text-on-surface leading-relaxed">
+                    {{ backend_company.market_presence }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Benchmarks & Competitive Moats Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- 4 Financial Stats -->
+        <div class="lg:col-span-1 p-5 rounded-xl bg-surface-container-high/40 border border-white/5 space-y-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-3 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-sm">bar_chart</span> Financial Metrics (Backend Stored)
+            </h4>
+            <div class="flex justify-between items-center text-xs py-1 border-b border-white/5">
+                <span class="text-on-surface-variant">Annual Revenue</span>
+                <span class="font-bold text-white font-mono">{{ backend_company.annual_revenue }}</span>
+            </div>
+            <div class="flex justify-between items-center text-xs py-1 border-b border-white/5">
+                <span class="text-on-surface-variant">Net Profit</span>
+                <span class="font-bold text-emerald-400 font-mono">{{ backend_company.net_profit }}</span>
+            </div>
+            <div class="flex justify-between items-center text-xs py-1 border-b border-white/5">
+                <span class="text-on-surface-variant">P/E Valuation Ratio</span>
+                <span class="font-bold text-secondary font-mono">{{ backend_company.pe_ratio }}</span>
+            </div>
+            <div class="flex justify-between items-center text-xs py-1">
+                <span class="text-on-surface-variant">Workforce / Artisans</span>
+                <span class="font-bold text-on-surface font-mono">{{ backend_company.employees }}</span>
+            </div>
+        </div>
+
+        <!-- Competitive Moats -->
+        <div class="lg:col-span-2 p-5 rounded-xl bg-surface-container-high/40 border border-white/5">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-sm">verified_user</span> Institutional Competitive Moats &amp; Edge
+            </h4>
+            <div class="text-xs text-on-surface leading-relaxed whitespace-pre-line space-y-1">
+                {{ backend_company.competitive_advantages }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Backend Storage Sync Stamp -->
+    <div class="mt-6 pt-4 border-t border-white/5 flex flex-wrap justify-between items-center text-[11px] text-on-surface-variant">
+        <span class="flex items-center gap-1">
+            <span class="material-symbols-outlined text-xs text-emerald-400">check_circle</span>
+            Backend Data Verified &bull; Table <code class="px-1 bg-white/10 rounded font-mono text-[10px]">companies</code> in SQLite
+        </span>
+        <span>Last Synced: {{ backend_company.updated_at or 'Permanent Cache' }}</span>
+    </div>
+</div>
+{% endif %}
+
+
+<script>
+const chartLabels = {{ labels | tojson }};
+const chartPrices = {{ prices | tojson }};
+const up = {{ 'true' if change >= 0 else 'false' }};
+new Chart(document.getElementById('price-chart').getContext('2d'), {
+    type: 'line',
+    data: { labels: chartLabels, datasets: [{
+        data: chartPrices, borderColor: up ? '#10B981' : '#EF4444', borderWidth: 2,
+        backgroundColor: up ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', fill: true, tension: 0.3, pointRadius: 0
+    }]},
+    options: { responsive: true, plugins: { legend: { display: false } },
+        scales: { x: { grid: { display: false }, ticks: { color: '#8c909f', maxTicksLimit: 8 } },
+                  y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#8c909f' } } } }
+});
+
+document.getElementById('predict-btn').addEventListener('click', async () => {
+    const errBox = document.getElementById('predict-error');
+    errBox.classList.add('hidden');
+    const target_return = document.getElementById('predict-target-return').value;
+    const days = document.getElementById('predict-days').value;
+    try {
+        const res = await fetch('/api/predict', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ ticker: "{{ ticker }}", target_return, days })
+        });
+        const d = await res.json();
+        if (!d.ok) { errBox.textContent = d.error || 'Could not recalculate.'; errBox.classList.remove('hidden'); return; }
+        document.getElementById('forecast-signal').textContent = d.signal;
+        document.getElementById('forecast-signal').className = 'text-headline-md ' +
+            (d.signal.includes('BUY') ? 'text-emerald-400' : (d.signal === 'SELL' ? 'text-red-400' : 'text-secondary'));
+        document.getElementById('forecast-prob').textContent = d.prob;
+        document.getElementById('predict-prob-out').textContent = d.prob + '%';
+        const expEl = document.getElementById('predict-exp-out');
+        expEl.textContent = (d.exp_return >= 0 ? '+' : '') + d.exp_return + '%';
+        expEl.className = 'text-headline-md ' + (d.exp_return >= 0 ? 'text-emerald-400' : 'text-red-400');
+        document.getElementById('predict-vol-out').textContent = d.volatility + '%';
+    } catch (e) {
+        errBox.textContent = 'Network error. Please try again.';
+        errBox.classList.remove('hidden');
+    }
+});
+
+function askCopilotAboutCompany(compName, ticker) {
+    const chatBtn = document.getElementById('gemini-copilot-btn');
+    const chatDrawer = document.getElementById('gemini-copilot-drawer');
+    const input = document.getElementById('gemini-input');
+    const sendBtn = document.getElementById('gemini-send');
+    if (chatDrawer && chatDrawer.classList.contains('hidden')) {
+        if (chatBtn) chatBtn.click();
+    }
+    if (input) {
+        input.value = `Provide a comprehensive financial and operational analysis for ${compName} (${ticker}). Detail its business model, competitive advantages, revenue drivers, valuation, and market outlook.`;
+        if (sendBtn) {
+            setTimeout(() => sendBtn.click(), 250);
+        }
+    }
+}
+</script>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    initTickerAutocomplete(
+        document.getElementById('ticker-search-input'),
+        document.getElementById('ticker-search-dropdown')
+    );
+});
+</script>
+{% endblock %}

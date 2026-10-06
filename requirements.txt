@@ -1,0 +1,10 @@
+flask
+yfinance
+pandas
+numpy
+scipy
+vaderSentiment
+pytz
+scikit-learn
+requests
+gunicorn

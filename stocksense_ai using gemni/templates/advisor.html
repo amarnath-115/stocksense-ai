@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% set active_page = 'advisor' %}
+{% block title %}Stocksense AI - AI Portfolio Advisor{% endblock %}
+{% block content %}
+
+<div>
+<h2 class="text-headline-lg-mobile md:text-headline-lg text-on-surface mb-xs">AI Wealth &amp; Portfolio Advisor</h2>
+<p class="text-on-surface-variant">Intelligent profiling based on age, income capacity, risk profile, and liquidity safety thresholds.</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+<!-- Input Profiler Form -->
+<div class="glass-panel rounded-xl p-lg">
+<div class="flex items-center justify-between mb-md">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">account_circle</span>
+<h3 class="text-headline-md">Investor Profile</h3>
+</div>
+{% if saved_profile %}
+<span class="text-[11px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/30 flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">cloud_done</span> Saved
+</span>
+{% endif %}
+</div>
+
+<form id="advisor-form" class="space-y-4">
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Your Age</label>
+<input id="adv-age" type="number" value="{{ saved_profile.age if saved_profile else 28 }}" min="18" max="90" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Risk Tolerance</label>
+<select id="adv-risk" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none">
+<option value="conservative" {% if saved_profile and saved_profile.risk_tolerance == 'conservative' %}selected{% endif %}>Conservative (Capital Preservation ~8.3% Return)</option>
+<option value="moderate" {% if not saved_profile or saved_profile.risk_tolerance == 'moderate' %}selected{% endif %}>Moderate (Balanced Growth ~11.0% Return)</option>
+<option value="aggressive" {% if saved_profile and saved_profile.risk_tolerance == 'aggressive' %}selected{% endif %}>Aggressive (High Capital Expansion ~15.2% Return)</option>
+</select>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Investment Horizon (Years)</label>
+<input id="adv-horizon" type="number" value="{{ saved_profile.investment_horizon if saved_profile else 7 }}" min="1" max="40" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Monthly In-Hand Income (₹ / $)</label>
+<input id="adv-income" type="number" value="{{ saved_profile.monthly_income|int if saved_profile else 85000 }}" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Current Liquid Savings (₹ / $)</label>
+<input id="adv-savings" type="number" value="{{ saved_profile.current_savings|int if saved_profile else 250000 }}" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<button type="submit" class="w-full bg-primary text-on-primary font-semibold py-2.5 rounded-lg hover:opacity-90 transition-opacity text-sm flex items-center justify-center gap-1.5">
+<span class="material-symbols-outlined text-sm">psychology</span> Generate &amp; Save Advisory
+</button>
+</form>
+</div>
+
+<!-- Results Panel -->
+<div class="col-span-1 lg:col-span-2 space-y-md">
+<div id="adv-empty-state" class="glass-panel rounded-xl p-xl text-center text-on-surface-variant {% if saved_profile and saved_profile.recommendation %}hidden{% endif %}">
+<span class="material-symbols-outlined text-4xl text-primary mb-2">insights</span>
+<p>Complete the profile on the left and click "Generate &amp; Save Advisory" to compute recommendations.</p>
+</div>
+
+<div id="adv-result" class="{% if not saved_profile or not saved_profile.recommendation %}hidden{% endif %} space-y-md">
+<div id="adv-sync-badge" class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs px-3.5 py-2 rounded-lg flex items-center gap-2">
+<span class="material-symbols-outlined text-sm shrink-0">verified</span>
+<span>Your advisory is automatically synchronized and saved to your account.</span>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-md">
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Emergency Reserve Target</p>
+<h3 id="adv-out-emerg" class="text-headline-md text-secondary">₹0</h3>
+<p id="adv-out-emerg-status" class="text-label-sm mt-xs font-semibold"></p>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Suggested Monthly SIP</p>
+<h3 id="adv-out-sip" class="text-headline-md text-primary">₹0</h3>
+<p class="text-label-sm text-on-surface-variant mt-xs">20% of Net Income</p>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Target Annual Return</p>
+<h3 id="adv-out-return" class="text-headline-md text-emerald-400">0.0%</h3>
+<p id="adv-out-tier" class="text-label-sm text-on-surface-variant mt-xs"></p>
+</div>
+</div>
+
+<div class="glass-panel rounded-xl p-lg">
+<h4 class="text-headline-md mb-xs">Executive Advisory Brief</h4>
+<p id="adv-out-summary" class="text-sm text-on-surface-variant leading-relaxed mb-lg"></p>
+<h4 class="text-xs uppercase font-semibold text-on-surface-variant tracking-wider mb-md">Optimal Asset Allocation Mix</h4>
+<div id="adv-alloc-bars" class="space-y-3"></div>
+</div>
+</div>
+</div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function renderAdvisorData(d) {
+    document.getElementById('adv-empty-state').classList.add('hidden');
+    document.getElementById('adv-out-emerg').textContent = '₹' + (d.emergency_fund_target || 0).toLocaleString();
+    const emergEl = document.getElementById('adv-out-emerg-status');
+    if (d.savings_healthy) {
+        emergEl.textContent = '✓ Emergency Fund Fully Covered';
+        emergEl.className = 'text-label-sm mt-xs font-semibold text-emerald-400';
+    } else {
+        emergEl.textContent = '⚠ Priority: Top up emergency fund first';
+        emergEl.className = 'text-label-sm mt-xs font-semibold text-amber-400';
+    }
+
+    document.getElementById('adv-out-sip').textContent = '₹' + (d.suggested_monthly_investment || 0).toLocaleString();
+    document.getElementById('adv-out-return').textContent = d.blended_return + '%';
+    document.getElementById('adv-out-tier').textContent = d.tier_name;
+    document.getElementById('adv-out-summary').textContent = d.advice_summary;
+
+    const barsBox = document.getElementById('adv-alloc-bars');
+    barsBox.innerHTML = '';
+    for (const [cat, pct] of Object.entries(d.allocation || {})) {
+        barsBox.innerHTML += `
+            <div>
+                <div class="flex justify-between text-xs mb-1">
+                    <span class="text-on-surface font-medium">${cat}</span>
+                    <span class="text-primary font-bold">${pct}%</span>
+                </div>
+                <div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-primary to-secondary" style="width: ${pct}%"></div>
+                </div>
+            </div>`;
+    }
+
+    document.getElementById('adv-result').classList.remove('hidden');
+}
+
+// Check if pre-existing saved profile recommendation exists
+const initialSavedProfile = {{ saved_profile.recommendation|tojson if (saved_profile and saved_profile.recommendation) else 'null' }};
+if (initialSavedProfile) {
+    renderAdvisorData(initialSavedProfile);
+}
+
+document.getElementById('advisor-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const age = parseInt(document.getElementById('adv-age').value);
+    const risk_tolerance = document.getElementById('adv-risk').value;
+    const investment_horizon = parseInt(document.getElementById('adv-horizon').value);
+    const monthly_income = parseFloat(document.getElementById('adv-income').value);
+    const current_savings = parseFloat(document.getElementById('adv-savings').value);
+
+    try {
+        const res = await fetch('/api/advisor/analyze', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ age, risk_tolerance, investment_horizon, monthly_income, current_savings })
+        });
+        const d = await res.json();
+        if (!d.ok) { alert('Failed to generate advisory.'); return; }
+        renderAdvisorData(d);
+    } catch(err) {
+        alert('Network error generating advice.');
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,120 @@
+<div class="appbg-forecast" aria-hidden="true">
+<style>
+.appbg-forecast { position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none; }
+.appbg-forecast canvas{position:fixed;inset:0;width:100%;height:100%;}
+.appbg-forecast .ui{position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 80% 70% at 50% 50%,rgba(139,92,246,0.12),transparent 65%),
+             radial-gradient(ellipse 40% 40% at 10% 90%,rgba(99,102,241,0.10),transparent 55%);}
+</style>
+<canvas id="c-forecast"></canvas>
+<div class="ui"></div>
+</div>
+<script>
+(function(){
+  const __reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cv=document.getElementById('c-forecast'),ctx=cv.getContext('2d');
+let W=cv.width=innerWidth,H=cv.height=innerHeight;
+window.addEventListener('resize',()=>{W=cv.width=innerWidth;H=cv.height=innerHeight;});
+const r=(a,b)=>a+Math.random()*(b-a);
+const P=['#8b5cf6','#6366f1','#a855f7','#22d3ee','#c084fc'];
+
+// Neural network nodes
+class NeuralBot{
+  constructor(init){
+    this.x=r(60,W-60);this.y=init?r(0,H):H+80;
+    this.rad=r(16,40);this.c=P[~~r(0,P.length)];this.a=r(0.2,0.5);
+    this.vy=-r(0.2,0.6);this.vx=r(-0.25,0.25);
+    this.pt=r(0,6.28);this.pv=r(0.015,0.04);
+    this.neurons=Array.from({length:~~r(4,8)},()=>({
+      a:r(0,6.28),d:r(this.rad+8,this.rad+30),t:r(0,6.28),tv:r(0.02,0.06)
+    }));
+    // body type: 0=circle 1=square 2=diamond
+    this.btype=~~r(0,3);
+  }
+  tick(){
+    this.y+=this.vy;this.x+=this.vx;this.pt+=this.pv;
+    this.neurons.forEach(n=>{n.t+=n.tv;n.a+=0.004;});
+    if(this.y<-130){this.y=H+80;this.x=r(60,W-60);}
+  }
+  draw(){
+    const p=0.7+0.3*Math.sin(this.pt);
+    ctx.save();ctx.translate(this.x,this.y);ctx.globalAlpha=this.a*p;
+    // connections to neurons
+    this.neurons.forEach(n=>{
+      const nx=Math.cos(n.a+n.t)*n.d,ny=Math.sin(n.a+n.t)*n.d;
+      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(nx,ny);
+      ctx.strokeStyle=this.c;ctx.lineWidth=0.8;ctx.globalAlpha=this.a*.4*p;ctx.stroke();
+      ctx.beginPath();ctx.arc(nx,ny,3,0,6.28);ctx.fillStyle=this.c;ctx.globalAlpha=this.a*.8*p;ctx.fill();
+    });
+    // body
+    ctx.globalAlpha=this.a*p;
+    const g=ctx.createRadialGradient(0,0,0,0,0,this.rad*1.5);
+    g.addColorStop(0,this.c+'44');g.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(0,0,this.rad*1.5,0,6.28);ctx.fillStyle=g;ctx.fill();
+    ctx.strokeStyle=this.c;ctx.lineWidth=1.8;
+    if(this.btype===0){ctx.beginPath();ctx.arc(0,0,this.rad,0,6.28);ctx.stroke();ctx.fillStyle=this.c+'22';ctx.fill();}
+    else if(this.btype===1){ctx.strokeRect(-this.rad,-this.rad,this.rad*2,this.rad*2);ctx.fillStyle=this.c+'18';ctx.fillRect(-this.rad,-this.rad,this.rad*2,this.rad*2);}
+    else{ctx.beginPath();ctx.moveTo(0,-this.rad);ctx.lineTo(this.rad,0);ctx.lineTo(0,this.rad);ctx.lineTo(-this.rad,0);ctx.closePath();ctx.stroke();ctx.fillStyle=this.c+'18';ctx.fill();}
+    // core dot
+    ctx.beginPath();ctx.arc(0,0,this.rad*.25,0,6.28);ctx.fillStyle=this.c;ctx.globalAlpha=this.a*1.4*p;ctx.fill();
+    ctx.restore();ctx.globalAlpha=1;
+  }
+}
+
+// Rising wave lines (AI prediction lines)
+class WaveBot{
+  constructor(init){
+    this.y=init?r(0,H):H+30;this.vy=-r(0.5,1.2);
+    this.pts=Array.from({length:20},(_,i)=>r(-20,20));
+    this.c=P[~~r(0,P.length)];this.a=r(0.15,0.4);
+    this.t=r(0,6.28);this.tv=r(0.02,0.05);
+    this.xoff=r(40,W-40);this.xspan=r(180,380);
+  }
+  tick(){
+    this.y+=this.vy;this.t+=this.tv;
+    this.pts=this.pts.map((v,i)=>v+(r(-1,1))*0.4);
+    if(this.y<-40)this.reset();
+  }
+  reset(){this.y=H+30;this.xoff=r(40,W-40);this.xspan=r(180,380);}
+  draw(){
+    ctx.save();ctx.globalAlpha=this.a*(0.8+0.2*Math.sin(this.t));
+    ctx.strokeStyle=this.c;ctx.lineWidth=1.5;
+    ctx.beginPath();
+    this.pts.forEach((v,i)=>{
+      const x=this.xoff+i*(this.xspan/this.pts.length);
+      const y=this.y+v+Math.sin(i*.4+this.t)*15;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    // prediction arrow head
+    const lx=this.xoff+this.xspan;
+    ctx.beginPath();ctx.moveTo(lx,this.y);ctx.lineTo(lx+14,this.y-6);ctx.lineTo(lx+14,this.y+6);ctx.closePath();
+    ctx.fillStyle=this.c;ctx.fill();
+    ctx.restore();ctx.globalAlpha=1;
+  }
+}
+
+// Particle stars (data bits)
+class Bit{
+  constructor(init){this.x=r(0,W);this.y=init?r(0,H):H+10;this.size=r(2,5);this.c=P[~~r(0,P.length)];this.a=r(0.1,0.4);this.vy=-r(0.6,1.5);this.t=r(0,6.28);}
+  tick(){this.y+=this.vy;this.t+=0.05;if(this.y<-10){this.y=H+10;this.x=r(0,W);}}
+  draw(){
+    ctx.save();ctx.globalAlpha=this.a*(0.6+0.4*Math.sin(this.t));
+    ctx.fillStyle=this.c;ctx.fillRect(this.x,this.y,this.size,this.size);
+    ctx.restore();ctx.globalAlpha=1;
+  }
+}
+
+const nets=Array.from({length:20},(_,i)=>new NeuralBot(true));
+const waves=Array.from({length:16},(_,i)=>new WaveBot(true));
+const bits=Array.from({length:50},(_,i)=>new Bit(true));
+
+function frame(){
+  ctx.fillStyle='#080511';ctx.fillRect(0,0,W,H);
+  bits.forEach(b=>{b.tick();b.draw();});
+  waves.forEach(w=>{w.tick();w.draw();});
+  nets.forEach(n=>{n.tick();n.draw();});
+  if(!__reduceMotion) requestAnimationFrame(frame);}
+frame();
+})();
+</script>

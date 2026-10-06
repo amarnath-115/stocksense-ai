@@ -1,0 +1,775 @@
+{% extends "base.html" %}
+{% set active_page = 'planner' %}
+{% block title %}Stocksense AI - Investment Planner{% endblock %}
+{% block content %}
+
+<div>
+<h2 class="text-headline-lg-mobile md:text-headline-lg text-on-surface mb-xs">Investment Planner &amp; Portfolio Studio</h2>
+<p class="text-on-surface-variant">Reverse-engineer required returns, architect 7-category model portfolios, and solve goal-based SIP targets.</p>
+</div>
+
+<!-- Main Tabs Switcher -->
+<div class="flex border-b border-white/10 gap-sm overflow-x-auto pb-1">
+<button onclick="switchPlannerTab('tab-required-return')" id="btn-tab-required-return" class="planner-nav-tab px-md py-sm border-b-2 border-primary text-primary font-semibold text-sm whitespace-nowrap flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">calculate</span> Required Return Calculator
+</button>
+<button onclick="switchPlannerTab('tab-model-portfolio')" id="btn-tab-model-portfolio" class="planner-nav-tab px-md py-sm border-b-2 border-transparent text-on-surface-variant hover:text-on-surface font-semibold text-sm whitespace-nowrap flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">pie_chart</span> Model Portfolio Builder
+</button>
+<button onclick="switchPlannerTab('tab-goal-planner')" id="btn-tab-goal-planner" class="planner-nav-tab px-md py-sm border-b-2 border-transparent text-on-surface-variant hover:text-on-surface font-semibold text-sm whitespace-nowrap flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">flag</span> Goal-Based Wealth Planner
+</button>
+<button onclick="switchPlannerTab('tab-saved-guides')" id="btn-tab-saved-guides" class="planner-nav-tab px-md py-sm border-b-2 border-transparent text-on-surface-variant hover:text-on-surface font-semibold text-sm whitespace-nowrap flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">bookmark</span> My Saved Guides &amp; Plans
+</button>
+</div>
+
+<!-- ===================================================================== -->
+<!-- TAB 1: REQUIRED RETURN CALCULATOR (FEATURE 1) -->
+<!-- ===================================================================== -->
+<div id="tab-required-return" class="planner-tab-panel space-y-lg">
+<div class="glass-panel rounded-xl p-lg">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-primary">psychology_alt</span>
+<h3 class="text-headline-md">Required Return Engine</h3>
+</div>
+<p class="text-sm text-on-surface-variant mb-lg">
+Tell us the annual return you desire or reverse-engineer it from a future target corpus. We evaluate risk feasibility, calculate shortfall risk, and solve for the exact asset blend.
+</p>
+
+<!-- Sub-modes toggle -->
+<div class="flex gap-2 p-1 bg-surface-container-lowest rounded-lg border border-white/5 w-fit mb-lg">
+<button type="button" onclick="setReqMode('direct')" id="mode-btn-direct" class="px-md py-1 rounded text-xs font-semibold bg-primary text-on-primary">Direct Target Return %</button>
+<button type="button" onclick="setReqMode('reverse')" id="mode-btn-reverse" class="px-md py-1 rounded text-xs font-semibold text-on-surface-variant hover:text-white">Reverse From Goal</button>
+</div>
+
+<form id="required-return-form" class="space-y-4">
+<!-- Direct mode field -->
+<div id="field-direct">
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Target Annual Return (%)</label>
+<input id="req-target-rate" type="number" step="0.1" value="12.0" class="w-full sm:w-80 bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+<p class="text-xs text-on-surface-variant mt-1">Benchmark: Safe ≈ 8.3%, Moderate ≈ 11.0%, Risky ≈ 15.2%</p>
+</div>
+
+<!-- Reverse mode fields -->
+<div id="fields-reverse" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-md">
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Target Corpus (₹ / $)</label>
+<input id="rev-corpus" type="number" value="5000000" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Monthly SIP (₹ / $)</label>
+<input id="rev-monthly" type="number" value="20000" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Horizon (Years)</label>
+<input id="rev-years" type="number" value="10" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+</div>
+
+<button type="submit" class="bg-primary text-on-primary font-semibold px-lg py-2 rounded-lg hover:opacity-90 transition-opacity text-sm">
+Analyze Required Mix
+</button>
+</form>
+</div>
+
+<!-- Output Section -->
+<div id="required-return-output" class="hidden space-y-md">
+<div id="unrealistic-warning-box" class="hidden p-md rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 flex items-start gap-sm">
+<span class="material-symbols-outlined text-2xl text-red-400">warning</span>
+<div>
+<h4 class="font-bold text-sm">High-Risk Speculative Alert</h4>
+<p id="unrealistic-text" class="text-xs mt-0.5 leading-relaxed"></p>
+</div>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md">
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Required Return</p>
+<h3 id="req-out-rate" class="text-headline-md text-primary">12.0%</h3>
+<p class="text-label-sm text-on-surface-variant mt-xs">Per Annum Compounded</p>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Feasibility Status</p>
+<h3 id="req-out-status" class="text-headline-md text-emerald-400">Realistic</h3>
+<p id="req-out-blend" class="text-label-sm text-on-surface-variant mt-xs"></p>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Shortfall Risk</p>
+<h3 id="req-out-shortfall" class="text-headline-md text-secondary">35.0%</h3>
+<p class="text-label-sm text-on-surface-variant mt-xs">1-Year Underperformance Risk</p>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Blended Volatility</p>
+<h3 id="req-out-vol" class="text-headline-md text-on-surface">16.5%</h3>
+<p class="text-label-sm text-on-surface-variant mt-xs">Portfolio Price Fluctuation</p>
+</div>
+</div>
+
+<div class="glass-panel rounded-xl p-lg">
+<h4 class="text-headline-md mb-xs">Advisory Verdict</h4>
+<p id="req-out-explanation" class="text-sm text-on-surface-variant leading-relaxed mb-lg"></p>
+<h4 class="text-xs uppercase font-semibold text-on-surface-variant tracking-wider mb-md">Recommended 7-Asset Distribution</h4>
+<div id="req-alloc-bars" class="space-y-3"></div>
+
+<div class="mt-lg pt-md border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-3">
+    <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-secondary text-sm">bookmark</span>
+        <span class="text-xs text-on-surface-variant">Save this required return mix and feasibility analysis to your profile history.</span>
+    </div>
+    <button type="button" onclick="saveActiveGuide('required_return')" class="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap">
+        <span class="material-symbols-outlined text-sm">bookmark_add</span> Save Guide to Profile
+    </button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- ===================================================================== -->
+<!-- TAB 2: MODEL PORTFOLIO BUILDER (FEATURE 2) -->
+<!-- ===================================================================== -->
+<div id="tab-model-portfolio" class="planner-tab-panel hidden space-y-lg">
+<div class="glass-panel rounded-xl p-lg">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-primary">pie_chart</span>
+<h3 class="text-headline-md">7-Category Model Portfolio Builder</h3>
+</div>
+<p class="text-sm text-on-surface-variant mb-lg">
+Input your lump sum capital, choose your financial goal, and pick a risk profile. Our dynamic institutional allocation algorithm mathematically splits your capital with exact rupee and percentage distributions, liquid ticker proxies, and an institutional execution roadmap.
+</p>
+
+<form id="model-portfolio-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-md items-end">
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Investment Amount (₹)</label>
+<input id="mod-amount" type="number" value="100000" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Financial Goal</label>
+<select id="mod-goal" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none">
+<option value="wealth" selected>Wealth Generation & Compounding</option>
+<option value="retirement">Retirement & Financial Freedom</option>
+<option value="preservation">Capital Preservation (Low Risk)</option>
+<option value="education">Child Education & Milestone</option>
+</select>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Risk Profile</label>
+<select id="mod-tier" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none">
+<option value="safe">Safe (Conservative ~8.3% Return)</option>
+<option value="moderate" selected>Moderate (Balanced ~11.0% Return)</option>
+<option value="risky">Risky (Aggressive ~15.2% Return)</option>
+</select>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Time Horizon (Years)</label>
+<input id="mod-years" type="number" value="5" min="1" max="40" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<button type="submit" class="bg-primary text-on-primary font-semibold py-2.5 rounded-lg hover:opacity-90 transition-opacity text-sm">
+Build Model Portfolio
+</button>
+</form>
+</div>
+
+<!-- Output Section -->
+<div id="model-portfolio-output" class="hidden space-y-lg">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md">
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Capital Deployed</p>
+<h3 id="mod-out-invested" class="text-headline-md text-on-surface">₹ 1,00,000</h3>
+<p id="mod-out-goal" class="text-label-sm text-primary mt-xs font-semibold">Wealth Generation</p>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Blended Annual Return</p>
+<h3 id="mod-out-return" class="text-headline-md text-emerald-400">11.0%</h3>
+<p class="text-label-sm text-on-surface-variant mt-xs">Compounded Annual Growth Rate</p>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Projected Future Value</p>
+<h3 id="mod-out-projected" class="text-headline-md text-primary">₹ 1,68,506</h3>
+<p id="mod-out-gain" class="text-label-sm text-emerald-400 mt-xs font-semibold">+₹ 68,506 Wealth Gain</p>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Portfolio Risk Score</p>
+<h3 id="mod-out-risk" class="text-headline-md text-secondary">15.5</h3>
+<p class="text-label-sm text-on-surface-variant mt-xs">Weighted Volatility*</p>
+</div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+<div class="glass-panel rounded-xl p-lg flex flex-col items-center justify-center">
+<h4 class="text-headline-md mb-md self-start">Asset Allocation Split</h4>
+<div class="w-64 h-64 relative">
+<canvas id="model-pie-chart"></canvas>
+</div>
+<p class="text-xs text-on-surface-variant mt-md text-center">*Dynamic split tuned to capital size, time horizon, and investor objective.</p>
+</div>
+
+<div class="glass-panel rounded-xl p-0 col-span-1 lg:col-span-2 overflow-hidden">
+<div class="p-lg border-b border-white/5 flex justify-between items-center">
+<div>
+<h4 class="text-headline-md">Dynamic Allocation &amp; Ticker Execution</h4>
+<p class="text-xs text-on-surface-variant mt-0.5">Exact rupee &amp; percentage distributions with institutional rationales</p>
+</div>
+<span id="mod-tier-badge" class="px-3 py-1 rounded-full text-xs font-bold uppercase bg-primary/10 text-primary border border-primary/20"></span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="text-label-sm text-on-surface-variant uppercase tracking-wider border-b border-white/5 bg-surface-container-low">
+<th class="p-md">Asset Category</th>
+<th class="p-md">Split (%)</th>
+<th class="p-md">Allocated Capital</th>
+<th class="p-md">Expert Strategy &amp; Representative Split</th>
+</tr>
+</thead>
+<tbody id="mod-table-body" class="divide-y divide-white/5 text-sm"></tbody>
+</table>
+</div>
+</div>
+</div>
+
+<!-- Institutional Strategy Roadmap Card -->
+<div id="mod-roadmap-container" class="glass-panel rounded-xl p-lg space-y-md">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary text-2xl">route</span>
+<div>
+<h4 class="text-headline-md">Institutional Expert Investment Roadmap</h4>
+<p class="text-xs text-on-surface-variant">Step-by-step phased execution schedule formulated under Modern Portfolio Theory (MPT)</p>
+</div>
+</div>
+<div id="mod-roadmap-steps" class="grid grid-cols-1 md:grid-cols-2 gap-md mt-md"></div>
+</div>
+
+<div class="glass-panel rounded-xl p-md flex flex-col sm:flex-row justify-between items-center gap-3">
+    <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-secondary text-sm">bookmark_added</span>
+        <span class="text-xs text-on-surface-variant">Store this customized 7-category model portfolio and execution roadmap in your account.</span>
+    </div>
+    <button type="button" onclick="saveActiveGuide('model_portfolio')" class="bg-primary text-on-primary text-xs font-semibold px-4 py-2.5 rounded-lg flex items-center gap-1.5 hover:opacity-90 transition-opacity whitespace-nowrap">
+        <span class="material-symbols-outlined text-sm">bookmark_add</span> Save Model Portfolio Guide
+    </button>
+</div>
+</div>
+</div>
+
+<!-- ===================================================================== -->
+<!-- TAB 3: GOAL-BASED WEALTH PLANNER -->
+<!-- ===================================================================== -->
+<div id="tab-goal-planner" class="planner-tab-panel hidden space-y-lg">
+<div class="glass-panel rounded-xl p-lg">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-primary">flag</span>
+<h3 class="text-headline-md">Goal-Based Wealth Planner</h3>
+</div>
+<p class="text-sm text-on-surface-variant mb-lg">Calculate the precise monthly SIP required to reach any future financial milestone.</p>
+<form id="goal-form" class="grid grid-cols-1 sm:grid-cols-4 gap-md items-end">
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Financial Goal Name</label>
+<input id="goal-name" type="text" value="Retirement Fund" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Target Amount (₹ / $)</label>
+<input id="goal-target" type="number" value="10000000" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Years to Target</label>
+<input id="goal-years" type="number" value="15" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Initial Deposit (Optional)</label>
+<input id="goal-initial" type="number" value="200000" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<div class="sm:col-span-4 flex justify-end">
+<button type="submit" class="bg-primary text-on-primary font-semibold px-lg py-2.5 rounded-lg hover:opacity-90 transition-opacity text-sm">
+Calculate Required Monthly SIP
+</button>
+</div>
+</form>
+</div>
+
+<div id="goal-output" class="hidden space-y-md">
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-md">
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Required Monthly SIP</p>
+<h3 id="goal-out-sip" class="text-headline-md text-primary">₹0</h3>
+<p class="text-label-sm text-on-surface-variant mt-xs">Systematic Investment Plan</p>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Total Principal Outlay</p>
+<h3 id="goal-out-invested" class="text-headline-md text-on-surface">₹0</h3>
+<p class="text-label-sm text-on-surface-variant mt-xs">Initial + Total Monthly Deposits</p>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Projected Compound Gain</p>
+<h3 id="goal-out-growth" class="text-headline-md text-emerald-400">₹0</h3>
+<p class="text-label-sm text-on-surface-variant mt-xs">Wealth Multiplier</p>
+</div>
+</div>
+
+<div class="glass-panel rounded-xl p-md flex flex-col sm:flex-row justify-between items-center gap-3">
+    <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-secondary text-sm">bookmark</span>
+        <span class="text-xs text-on-surface-variant">Save this target SIP strategy into your profile history.</span>
+    </div>
+    <button type="button" onclick="saveActiveGuide('goal_sip')" class="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap">
+        <span class="material-symbols-outlined text-sm">bookmark_add</span> Save Wealth Goal
+    </button>
+</div>
+</div>
+</div>
+
+<!-- ===================================================================== -->
+<!-- TAB 4: MY SAVED GUIDES & PLANS -->
+<!-- ===================================================================== -->
+<div id="tab-saved-guides" class="planner-tab-panel hidden space-y-lg">
+<div class="flex flex-col sm:flex-row justify-between sm:items-center gap-sm">
+    <div>
+        <h3 class="text-headline-md">My Saved Investment Guides</h3>
+        <p class="text-sm text-on-surface-variant">Persistent records of all model portfolios, required return mixes, and goal plans created under your phone number.</p>
+    </div>
+    <button onclick="loadSavedGuides()" class="bg-surface-container-high border border-white/10 hover:border-primary/40 text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-colors w-fit text-primary">
+        <span class="material-symbols-outlined text-sm">refresh</span> Refresh Guides
+    </button>
+</div>
+
+<div id="saved-guides-empty" class="glass-panel rounded-xl p-xl text-center text-on-surface-variant space-y-2">
+    <span class="material-symbols-outlined text-4xl text-primary mb-2">bookmark_border</span>
+    <h4 class="text-sm font-semibold text-on-surface">No Saved Investment Guides Yet</h4>
+    <p class="text-xs max-w-sm mx-auto">Generate any model portfolio, required return mix, or goal SIP plan in the tabs above and click "Save Guide" to store it here.</p>
+</div>
+
+<div id="saved-guides-container" class="grid grid-cols-1 md:grid-cols-2 gap-md hidden"></div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let modelDoughnutChart = null;
+
+// Tab switcher
+function switchPlannerTab(tabId) {
+    document.querySelectorAll('.planner-tab-panel').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.planner-nav-tab').forEach(b => {
+        b.className = 'planner-nav-tab px-md py-sm border-b-2 border-transparent text-on-surface-variant hover:text-on-surface font-semibold text-sm whitespace-nowrap flex items-center gap-2';
+    });
+    document.getElementById(tabId).classList.remove('hidden');
+    document.getElementById('btn-' + tabId).className = 'planner-nav-tab px-md py-sm border-b-2 border-primary text-primary font-semibold text-sm whitespace-nowrap flex items-center gap-2';
+    if (tabId === 'tab-saved-guides') {
+        loadSavedGuides();
+    }
+}
+
+// Mode toggle for required return
+let currentReqMode = 'direct';
+function setReqMode(mode) {
+    currentReqMode = mode;
+    const btnDirect = document.getElementById('mode-btn-direct');
+    const btnRev = document.getElementById('mode-btn-reverse');
+    const fieldDirect = document.getElementById('field-direct');
+    const fieldsRev = document.getElementById('fields-reverse');
+
+    if (mode === 'direct') {
+        btnDirect.className = 'px-md py-1 rounded text-xs font-semibold bg-primary text-on-primary';
+        btnRev.className = 'px-md py-1 rounded text-xs font-semibold text-on-surface-variant hover:text-white';
+        fieldDirect.classList.remove('hidden');
+        fieldsRev.classList.add('hidden');
+    } else {
+        btnRev.className = 'px-md py-1 rounded text-xs font-semibold bg-primary text-on-primary';
+        btnDirect.className = 'px-md py-1 rounded text-xs font-semibold text-on-surface-variant hover:text-white';
+        fieldsRev.classList.remove('hidden');
+        fieldDirect.classList.add('hidden');
+    }
+}
+
+// Handler: Required Return Form
+document.getElementById('required-return-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    let bodyData = {};
+    if (currentReqMode === 'direct') {
+        bodyData.target_return_pct = parseFloat(document.getElementById('req-target-rate').value);
+    } else {
+        bodyData.target_corpus = parseFloat(document.getElementById('rev-corpus').value);
+        bodyData.monthly_sip = parseFloat(document.getElementById('rev-monthly').value);
+        bodyData.years = parseInt(document.getElementById('rev-years').value);
+    }
+
+    try {
+        const res = await fetch('/api/planner/required-return', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(bodyData)
+        });
+        const d = await res.json();
+        if (!d.ok) { alert(d.error || 'Failed to calculate'); return; }
+
+        document.getElementById('req-out-rate').textContent = (d.target_return_pct || d.required_rate).toFixed(1) + '%';
+        const statusEl = document.getElementById('req-out-status');
+        const warnBox = document.getElementById('unrealistic-warning-box');
+
+        if (d.is_unrealistic) {
+            statusEl.textContent = 'High-Risk Speculative';
+            statusEl.className = 'text-headline-md text-red-400';
+            document.getElementById('unrealistic-text').textContent = d.warning;
+            warnBox.classList.remove('hidden');
+        } else {
+            statusEl.textContent = 'Feasible & Realistic';
+            statusEl.className = 'text-headline-md text-emerald-400';
+            warnBox.classList.add('hidden');
+        }
+
+        document.getElementById('req-out-blend').textContent = d.blend_desc;
+        document.getElementById('req-out-shortfall').textContent = d.shortfall_probability + '%';
+        document.getElementById('req-out-vol').textContent = d.blended_volatility + '%';
+        document.getElementById('req-out-explanation').textContent = d.explanation;
+
+        // Render allocation progress bars
+        const barsBox = document.getElementById('req-alloc-bars');
+        barsBox.innerHTML = '';
+        const alloc = d.asset_allocation || {};
+        for (const [cat, pct] of Object.entries(alloc)) {
+            barsBox.innerHTML += `
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-on-surface font-medium">${cat}</span>
+                        <span class="text-primary font-bold">${pct}%</span>
+                    </div>
+                    <div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-primary to-secondary" style="width: ${pct}%"></div>
+                    </div>
+                </div>`;
+        }
+
+        window._lastReqReturnData = { ...d, reqMode: currentReqMode, ...bodyData };
+        document.getElementById('required-return-output').classList.remove('hidden');
+    } catch (err) {
+        alert('Network error calculating required return.');
+    }
+});
+
+// Handler: Model Portfolio Form
+document.getElementById('model-portfolio-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const amount = parseFloat(document.getElementById('mod-amount').value);
+    const tier = document.getElementById('mod-tier').value;
+    const years = parseInt(document.getElementById('mod-years').value);
+    const goal = document.getElementById('mod-goal').value;
+
+    try {
+        const res = await fetch('/api/planner/model-portfolio', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ amount, tier, years, goal })
+        });
+        const d = await res.json();
+        if (!d.ok) { alert('Failed to build model portfolio.'); return; }
+
+        window._lastModelData = { ...d, amount, tier, years, goal };
+
+        document.getElementById('mod-out-invested').textContent = d.invested_formatted || ('₹ ' + d.invested_amount.toLocaleString());
+        document.getElementById('mod-out-goal').textContent = d.goal_name || 'Wealth Generation';
+        document.getElementById('mod-out-return').textContent = d.blended_return_pct + '%';
+        document.getElementById('mod-out-projected').textContent = d.projected_corpus_formatted || ('₹ ' + d.projected_corpus.toLocaleString());
+        document.getElementById('mod-out-gain').textContent = '+' + (d.projected_gain_formatted || ('₹ ' + d.projected_gain.toLocaleString())) + ' Growth';
+        document.getElementById('mod-out-risk').textContent = d.simplified_risk_score;
+        document.getElementById('mod-tier-badge').textContent = d.tier_name;
+
+        // Populate breakdown table
+        const tbody = document.getElementById('mod-table-body');
+        tbody.innerHTML = '';
+        const labels = [];
+        const chartData = [];
+        const colors = ['#adc6ff', '#4cd7f6', '#d0bcff', '#facc15', '#cbd5e1', '#f97316', '#64748b'];
+
+        d.allocations.forEach((item, idx) => {
+            labels.push(item.category);
+            chartData.push(item.weight_pct);
+
+            let tickersHtml = (item.suggested_tickers || []).map(t =>
+                `<span class="inline-flex items-center gap-1.5 bg-surface-container-low border border-white/10 px-2.5 py-1 rounded text-xs mr-1.5 mb-1.5 shadow-sm">
+                    <strong class="text-primary">${t.ticker}</strong>
+                    <span class="text-on-surface-variant">•</span>
+                    <span class="text-emerald-400 font-medium">${t.amount_formatted || ('₹' + t.allocated_amount.toLocaleString())}</span>
+                </span>`
+            ).join('') || '<span class="text-on-surface-variant text-xs">Direct index proxy allocation</span>';
+
+            tbody.innerHTML += `
+                <tr class="hover:bg-white/[0.02] align-top">
+                    <td class="p-md font-semibold text-on-surface">${item.category}</td>
+                    <td class="p-md font-bold text-primary text-base">${item.weight_pct}%</td>
+                    <td class="p-md font-semibold text-on-surface">${item.amount_formatted || ('₹ ' + item.amount.toLocaleString())}</td>
+                    <td class="p-md">
+                        <div class="mb-1">${tickersHtml}</div>
+                        <p class="text-xs text-on-surface-variant italic leading-relaxed">${item.expert_rationale || ''}</p>
+                    </td>
+                </tr>`;
+        });
+
+        // Populate roadmap steps
+        const roadmapBox = document.getElementById('mod-roadmap-steps');
+        if (roadmapBox && d.execution_roadmap) {
+            roadmapBox.innerHTML = d.execution_roadmap.map((step, sIdx) => `
+                <div class="p-md rounded-xl bg-surface-container-low border border-white/5 space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-primary/20 text-primary font-bold text-xs flex items-center justify-center shrink-0">${sIdx + 1}</span>
+                        <h5 class="text-sm font-bold text-on-surface">${step.phase}</h5>
+                    </div>
+                    <p class="text-xs text-on-surface-variant leading-relaxed pl-8">${step.action}</p>
+                </div>
+            `).join('');
+        }
+
+        // Chart.js Doughnut Chart
+        const ctx = document.getElementById('model-pie-chart').getContext('2d');
+        if (modelDoughnutChart) modelDoughnutChart.destroy();
+        modelDoughnutChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: chartData,
+                    backgroundColor: colors,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                cutout: '72%'
+            }
+        });
+
+        document.getElementById('model-portfolio-output').classList.remove('hidden');
+    } catch(err) {
+        alert('Network error generating model portfolio.');
+    }
+});
+
+// Handler: Goal-Based Wealth Planner Form
+document.getElementById('goal-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const goal_name = document.getElementById('goal-name').value;
+    const target_amount = parseFloat(document.getElementById('goal-target').value);
+    const years = parseInt(document.getElementById('goal-years').value);
+    const initial_investment = parseFloat(document.getElementById('goal-initial').value || 0);
+
+    try {
+        const res = await fetch('/api/planner/goal', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ goal_name, target_amount, years, initial_investment })
+        });
+        const d = await res.json();
+        if(!d.ok) { alert('Failed to calculate goal'); return; }
+
+        window._lastGoalData = { ...d, goal_name, target_amount, years, initial_investment };
+
+        document.getElementById('goal-out-sip').textContent = '₹' + d.required_monthly_sip.toLocaleString();
+        document.getElementById('goal-out-invested').textContent = '₹' + d.total_invested.toLocaleString();
+        document.getElementById('goal-out-growth').textContent = '+₹' + d.estimated_growth.toLocaleString();
+        document.getElementById('goal-output').classList.remove('hidden');
+    } catch (e) {
+        alert('Error processing goal request.');
+    }
+});
+
+// ===========================================================================
+// PERSISTENT INVESTMENT GUIDES MANAGEMENT
+// ===========================================================================
+async function saveActiveGuide(type) {
+    let payload = {};
+    if (type === 'required_return') {
+        if (!window._lastReqReturnData) { alert('Please calculate a required return first.'); return; }
+        const d = window._lastReqReturnData;
+        const defaultTitle = `Required Return ${d.target_return_pct || d.required_rate}% Allocation`;
+        const title = prompt('Enter a title for this investment plan:', defaultTitle);
+        if (!title) return;
+        payload = {
+            guide_type: 'required_return',
+            title: title.trim(),
+            summary: d.explanation || `Portfolio allocation for ${d.target_return_pct || d.required_rate}% expected annual return.`,
+            target_amount: d.target_corpus || 0,
+            expected_return: d.target_return_pct || d.required_rate,
+            horizon_years: d.years || 5,
+            data: d
+        };
+    } else if (type === 'model_portfolio') {
+        if (!window._lastModelData) { alert('Please build a model portfolio first.'); return; }
+        const d = window._lastModelData;
+        const defaultTitle = `Model Portfolio: ${d.tier.toUpperCase()} (₹${(d.invested_amount || d.amount).toLocaleString()})`;
+        const title = prompt('Enter a title for this model portfolio guide:', defaultTitle);
+        if (!title) return;
+        payload = {
+            guide_type: 'model_portfolio',
+            title: title.trim(),
+            summary: `7-Category portfolio architecture targeting ₹${(d.projected_corpus || 0).toLocaleString()} with ${d.blended_return_pct}% annual growth.`,
+            target_amount: d.invested_amount || d.amount,
+            expected_return: d.blended_return_pct,
+            horizon_years: d.horizon_years || d.years || 5,
+            data: d
+        };
+    } else if (type === 'goal_sip') {
+        if (!window._lastGoalData) { alert('Please calculate a goal SIP first.'); return; }
+        const d = window._lastGoalData;
+        const defaultTitle = `Goal Plan: ${d.goal_name} (₹${(d.target_amount).toLocaleString()})`;
+        const title = prompt('Enter a title for this wealth goal:', defaultTitle);
+        if (!title) return;
+        payload = {
+            guide_type: 'goal_sip',
+            title: title.trim(),
+            summary: `Monthly SIP of ₹${d.required_monthly_sip.toLocaleString()} for ${d.years} years to reach ₹${d.target_amount.toLocaleString()}.`,
+            target_amount: d.target_amount,
+            expected_return: d.annual_return_pct || 12,
+            horizon_years: d.years,
+            data: d
+        };
+    }
+
+    try {
+        const res = await fetch('/api/planner/save-guide', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const respData = await res.json();
+        if (respData.ok) {
+            alert('✓ Investment Guide successfully saved to your profile!');
+            loadSavedGuides();
+        } else {
+            alert(respData.error || 'Failed to save guide.');
+        }
+    } catch (e) {
+        alert('Network error saving investment guide.');
+    }
+}
+
+let loadedGuidesCache = [];
+
+async function loadSavedGuides() {
+    try {
+        const res = await fetch('/api/planner/saved-guides');
+        const data = await res.json();
+        const emptyEl = document.getElementById('saved-guides-empty');
+        const container = document.getElementById('saved-guides-container');
+
+        if (!data.ok || !data.guides || data.guides.length === 0) {
+            emptyEl.classList.remove('hidden');
+            container.classList.add('hidden');
+            return;
+        }
+
+        loadedGuidesCache = data.guides;
+        emptyEl.classList.add('hidden');
+        container.classList.remove('hidden');
+
+        container.innerHTML = data.guides.map((g, idx) => {
+            let typeBadge = '';
+            let icon = 'description';
+            if (g.guide_type === 'model_portfolio') {
+                typeBadge = '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-primary/15 text-primary border border-primary/30">Model Portfolio</span>';
+                icon = 'pie_chart';
+            } else if (g.guide_type === 'required_return') {
+                typeBadge = '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-secondary/15 text-secondary border border-secondary/30">Required Return</span>';
+                icon = 'calculate';
+            } else {
+                typeBadge = '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Goal SIP</span>';
+                icon = 'flag';
+            }
+
+            return `
+            <div class="glass-panel rounded-xl p-lg flex flex-col justify-between space-y-4 hover:border-white/20 transition-all">
+                <div class="space-y-2">
+                    <div class="flex justify-between items-start gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-xl">${icon}</span>
+                            <h4 class="text-sm font-bold text-on-surface line-clamp-1">${g.title}</h4>
+                        </div>
+                        ${typeBadge}
+                    </div>
+                    <p class="text-xs text-on-surface-variant line-clamp-2 leading-relaxed">${g.summary || 'Custom investment plan saved in your account.'}</p>
+                    <div class="flex flex-wrap gap-2 pt-1 text-xs">
+                        <span class="px-2 py-1 rounded bg-surface-container-low border border-white/5 text-on-surface font-medium">
+                            Target: <strong class="text-primary">₹${(g.target_amount || 0).toLocaleString()}</strong>
+                        </span>
+                        <span class="px-2 py-1 rounded bg-surface-container-low border border-white/5 text-on-surface font-medium">
+                            Return: <strong class="text-emerald-400">${g.expected_return}%</strong>
+                        </span>
+                        <span class="px-2 py-1 rounded bg-surface-container-low border border-white/5 text-on-surface font-medium">
+                            Horizon: <strong>${g.horizon_years} Yrs</strong>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-2 border-t border-white/5 text-xs text-on-surface-variant">
+                    <span>Saved: ${g.created_at ? g.created_at.substring(0, 16) : 'Recently'}</span>
+                    <div class="flex gap-2">
+                        <button onclick="restoreGuideFromIndex(${idx})" class="bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1 transition-colors">
+                            <span class="material-symbols-outlined text-xs">open_in_new</span> Restore
+                        </button>
+                        <button onclick="deleteSavedGuide(${g.id})" class="hover:bg-red-500/10 text-on-surface-variant hover:text-red-400 p-1.5 rounded-lg transition-colors" title="Delete Guide">
+                            <span class="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+
+    } catch (e) {
+        console.error('Error loading saved guides:', e);
+    }
+}
+
+function restoreGuideFromIndex(index) {
+    const g = loadedGuidesCache[index];
+    if (!g || !g.data) return;
+    const d = g.data;
+
+    if (g.guide_type === 'model_portfolio') {
+        switchPlannerTab('tab-model-portfolio');
+        if (d.amount) document.getElementById('mod-amount').value = d.amount;
+        if (d.tier) document.getElementById('mod-tier').value = d.tier;
+        if (d.years) document.getElementById('mod-years').value = d.years;
+        if (d.goal) document.getElementById('mod-goal').value = d.goal;
+        // Trigger model form submission to display output
+        document.getElementById('model-portfolio-form').dispatchEvent(new Event('submit'));
+    } else if (g.guide_type === 'required_return') {
+        switchPlannerTab('tab-required-return');
+        if (d.reqMode === 'reverse') {
+            setReqMode('reverse');
+            if (d.target_corpus) document.getElementById('rev-corpus').value = d.target_corpus;
+            if (d.monthly_sip) document.getElementById('rev-monthly').value = d.monthly_sip;
+            if (d.years) document.getElementById('rev-years').value = d.years;
+        } else {
+            setReqMode('direct');
+            if (d.target_return_pct) document.getElementById('req-target-rate').value = d.target_return_pct;
+        }
+        document.getElementById('required-return-form').dispatchEvent(new Event('submit'));
+    } else if (g.guide_type === 'goal_sip') {
+        switchPlannerTab('tab-goal-planner');
+        if (d.goal_name) document.getElementById('goal-name').value = d.goal_name;
+        if (d.target_amount) document.getElementById('goal-target').value = d.target_amount;
+        if (d.years) document.getElementById('goal-years').value = d.years;
+        if (d.initial_investment !== undefined) document.getElementById('goal-initial').value = d.initial_investment;
+        document.getElementById('goal-form').dispatchEvent(new Event('submit'));
+    }
+}
+
+async function deleteSavedGuide(guideId) {
+    if (!confirm('Permanently delete this saved investment guide?')) return;
+    try {
+        const res = await fetch(`/api/planner/saved-guides/${guideId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.ok) {
+            loadSavedGuides();
+        } else {
+            alert('Could not delete investment guide.');
+        }
+    } catch (e) {
+        alert('Network error deleting guide.');
+    }
+}
+</script>
+{% endblock %}

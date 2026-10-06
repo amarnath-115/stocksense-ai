@@ -1,0 +1,355 @@
+{% extends "base.html" %}
+{% set active_page = 'forecast' %}
+{% block title %}Stocksense AI - Deep Learning Forecast{% endblock %}
+{% block content %}
+
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-md">
+<div>
+<h2 class="text-headline-lg-mobile md:text-headline-lg text-on-surface mb-xs">AI Deep Learning Forecast</h2>
+<p class="text-on-surface-variant">Multi-Horizon Sequential Neural Network (LSTM Architecture) trajectory modeling up to 5 years, risk alert corridors &amp; SWOT catalysts.</p>
+</div>
+<form method="get" class="flex gap-2 items-center bg-surface-container-low border border-white/5 rounded-lg p-2 relative" autocomplete="off">
+<div class="relative">
+<input id="forecast-ticker-input" name="ticker" value="{{ ticker }}" placeholder="Enter ticker e.g. NVDA, AAPL" class="bg-transparent border-none text-sm focus:ring-0 w-52"/>
+<div id="forecast-ticker-dropdown" class="hidden absolute left-0 top-full mt-2 w-80 max-h-80 overflow-y-auto bg-surface-container-lowest border border-white/10 rounded-lg shadow-2xl z-50"></div>
+</div>
+<button class="bg-primary text-on-primary text-sm font-semibold px-4 py-1.5 rounded-md">Generate</button>
+</form>
+</div>
+
+<!-- Horizon Selection Pills -->
+<div class="flex items-center gap-2 p-1 bg-surface-container-lowest rounded-xl border border-white/5 w-fit overflow-x-auto">
+<span class="text-xs uppercase font-bold text-on-surface-variant px-3">Horizon:</span>
+<button type="button" onclick="changeHorizon('30d')" id="btn-hz-30d" class="hz-pill px-3 py-1 rounded-lg text-xs font-semibold bg-primary text-on-primary transition-all">30 Days</button>
+<button type="button" onclick="changeHorizon('90d')" id="btn-hz-90d" class="hz-pill px-3 py-1 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-white transition-all">3 Months</button>
+<button type="button" onclick="changeHorizon('180d')" id="btn-hz-180d" class="hz-pill px-3 py-1 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-white transition-all">6 Months</button>
+<button type="button" onclick="changeHorizon('1y')" id="btn-hz-1y" class="hz-pill px-3 py-1 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-white transition-all">1 Year</button>
+<button type="button" onclick="changeHorizon('3y')" id="btn-hz-3y" class="hz-pill px-3 py-1 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-white transition-all">3 Years</button>
+<button type="button" onclick="changeHorizon('5y')" id="btn-hz-5y" class="hz-pill px-3 py-1 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-white transition-all">5 Years</button>
+</div>
+
+<div id="loading-spinner" class="glass-panel rounded-xl p-xl text-center">
+<div class="inline-block animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mb-md"></div>
+<p class="text-on-surface font-semibold" id="loading-text">Calibrating Sequential Neural Model for {{ ticker }}...</p>
+<p class="text-xs text-on-surface-variant mt-1">Calibrating multi-step sliding-window feature matrix &amp; confidence corridor.</p>
+</div>
+
+<div id="forecast-container" class="hidden space-y-lg">
+<!-- High-Visibility Downfall Risk Alert Banner -->
+<div id="alert-banner" class="p-md rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-md transition-all">
+<div class="flex items-start sm:items-center gap-sm">
+<span class="material-symbols-outlined text-3xl" id="alert-icon">warning</span>
+<div>
+<div class="flex items-center gap-2">
+<h4 class="font-bold text-sm" id="alert-title">Downfall Risk &amp; Protection Alert</h4>
+<span id="alert-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase"></span>
+</div>
+<p class="text-xs mt-0.5 leading-relaxed" id="alert-message"></p>
+</div>
+</div>
+<div class="flex items-center gap-3 shrink-0 bg-surface-container-lowest/80 px-3 py-2 rounded-lg border border-white/10">
+<div>
+<p class="text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold">Recommended Stop-Loss</p>
+<p id="stop-loss-val" class="text-sm font-bold text-red-400">$0.00</p>
+</div>
+<div class="border-l border-white/10 pl-3">
+<p class="text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold">Risk/Reward</p>
+<p id="risk-reward-val" class="text-sm font-bold text-emerald-400">1:2.5</p>
+</div>
+</div>
+</div>
+
+<!-- Key Metric Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md">
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Current Price</p>
+<h3 id="current-price-val" class="text-headline-md text-on-surface">$0.00</h3>
+<p id="current-ticker-label" class="text-label-sm text-on-surface-variant mt-xs">{{ ticker }} Live Spot</p>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md" id="target-label">Target Price</p>
+<h3 id="target-price-val" class="text-headline-md text-primary">$0.00</h3>
+<p id="target-date-label" class="text-label-sm text-on-surface-variant mt-xs">Projected End Price</p>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Projected Trajectory Growth</p>
+<h3 id="growth-pct-val" class="text-headline-md">+0.00%</h3>
+<p id="growth-sub-label" class="text-label-sm text-on-surface-variant mt-xs">Compounded Price Delta</p>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-md">Ensemble AI Verdict</p>
+<h3 id="ensemble-action" class="text-headline-md text-secondary">HOLD</h3>
+<p id="ensemble-conf" class="text-label-sm text-on-surface-variant mt-xs">0% Confidence Score</p>
+</div>
+</div>
+
+<!-- Chart Panel -->
+<div class="glass-panel rounded-xl p-lg">
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-md">
+<div>
+<h3 class="text-headline-md" id="chart-heading">Projected Price Trajectory</h3>
+<p class="text-xs text-on-surface-variant">Sequential Neural Predictor with ±1σ confidence corridor corridor</p>
+</div>
+<div class="flex items-center gap-3 text-xs">
+<span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-primary"></span> Projected</span>
+<span class="flex items-center gap-1 text-on-surface-variant"><span class="w-3 h-0.5 bg-white/20"></span> Confidence Corridor (80%)</span>
+</div>
+</div>
+<div class="h-80 relative">
+<canvas id="forecast-chart"></canvas>
+</div>
+</div>
+
+<!-- Strategic SWOT Breakdown (Pros & Cons) -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-lg">
+<!-- Bullish Catalysts (Pros) -->
+<div class="glass-panel rounded-xl p-lg space-y-md border-t-2 border-emerald-400">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-emerald-400 text-2xl">thumb_up</span>
+<div>
+<h4 class="text-headline-md text-emerald-400">Bullish Catalysts (Pros)</h4>
+<p class="text-xs text-on-surface-variant">Data-driven quantitative and technical upside drivers</p>
+</div>
+</div>
+<div id="pros-container" class="space-y-3 mt-md"></div>
+</div>
+
+<!-- Bearish Headwinds (Cons) -->
+<div class="glass-panel rounded-xl p-lg space-y-md border-t-2 border-red-400">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-red-400 text-2xl">thumb_down</span>
+<div>
+<h4 class="text-headline-md text-red-400">Bearish Headwinds (Cons)</h4>
+<p class="text-xs text-on-surface-variant">Downfall vulnerabilities, stop-loss discipline, and market risks</p>
+</div>
+</div>
+<div id="cons-container" class="space-y-3 mt-md"></div>
+</div>
+</div>
+</div>
+
+<div id="error-card" class="hidden glass-panel rounded-xl p-xl text-center">
+<span class="material-symbols-outlined text-error text-4xl mb-2">error</span>
+<p id="error-message" class="text-on-surface font-semibold"></p>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let forecastChart = null;
+let currentHorizon = '30d';
+
+function changeHorizon(hz) {
+    currentHorizon = hz;
+    document.querySelectorAll('.hz-pill').forEach(b => {
+        b.className = 'hz-pill px-3 py-1 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-white transition-all';
+    });
+    const activeBtn = document.getElementById('btn-hz-' + hz);
+    if (activeBtn) {
+        activeBtn.className = 'hz-pill px-3 py-1 rounded-lg text-xs font-semibold bg-primary text-on-primary transition-all';
+    }
+    loadForecast();
+}
+
+async function loadForecast() {
+    const ticker = "{{ ticker }}";
+    const spinner = document.getElementById('loading-spinner');
+    const container = document.getElementById('forecast-container');
+    const errorCard = document.getElementById('error-card');
+
+    spinner.classList.remove('hidden');
+    container.classList.add('hidden');
+    errorCard.classList.add('hidden');
+
+    try {
+        const res = await fetch('/api/forecast/lstm', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ ticker: ticker, horizon: currentHorizon })
+        });
+        const data = await res.json();
+        spinner.classList.add('hidden');
+
+        if (!data.ok) {
+            document.getElementById('error-message').textContent = data.error || 'Prediction unavailable.';
+            errorCard.classList.remove('hidden');
+            return;
+        }
+
+        const currSym = data.currency === 'INR' ? '₹' : '$';
+
+        // Populate metrics
+        document.getElementById('current-price-val').textContent = `${currSym} ${data.current_price.toFixed(2)}`;
+        document.getElementById('target-price-val').textContent = `${currSym} ${data.final_price.toFixed(2)}`;
+        document.getElementById('target-label').textContent = `${data.horizon_label} Target Price`;
+        document.getElementById('chart-heading').textContent = `Projected ${data.horizon_label} Price Trajectory`;
+
+        const growthEl = document.getElementById('growth-pct-val');
+        const up = data.growth_pct >= 0;
+        growthEl.textContent = (up ? '+' : '') + data.growth_pct.toFixed(2) + '%';
+        growthEl.className = 'text-headline-md ' + (up ? 'text-emerald-400' : 'text-red-400');
+
+        // Ensemble verdict
+        const ens = data.ensemble || {};
+        const actionEl = document.getElementById('ensemble-action');
+        actionEl.textContent = ens.action || 'HOLD';
+        actionEl.className = 'text-headline-md ' + (ens.action && ens.action.includes('BUY') ? 'text-emerald-400' : (ens.action && ens.action.includes('SELL') ? 'text-red-400' : 'text-secondary'));
+        document.getElementById('ensemble-conf').textContent = (ens.confidence || 75) + '% Confidence';
+
+        // Downfall Alert & Stop-Loss
+        const alert = data.alert || {};
+        const banner = document.getElementById('alert-banner');
+        document.getElementById('stop-loss-val').textContent = `${currSym} ${(alert.stop_loss || (data.current_price * 0.94)).toFixed(2)} (${alert.stop_loss_pct || -6.0}%)`;
+        document.getElementById('risk-reward-val').textContent = `1 : ${(alert.risk_reward_ratio || 2.0).toFixed(1)}`;
+
+        if (alert.alert) {
+            banner.className = 'p-md rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-md ' +
+                (alert.severity === 'High' ? 'bg-red-500/10 border-red-500/30 text-red-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-300');
+            document.getElementById('alert-icon').textContent = alert.severity === 'High' ? 'emergency' : 'warning';
+            document.getElementById('alert-icon').className = 'material-symbols-outlined text-3xl ' + (alert.severity === 'High' ? 'text-red-400' : 'text-amber-400');
+            document.getElementById('alert-message').textContent = alert.warning_message;
+            document.getElementById('alert-badge').textContent = alert.severity + ' Severity';
+            document.getElementById('alert-badge').className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase ' +
+                (alert.severity === 'High' ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30');
+        } else {
+            banner.className = 'p-md rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-md bg-emerald-500/10 border-emerald-500/20 text-emerald-300';
+            document.getElementById('alert-icon').textContent = 'check_circle';
+            document.getElementById('alert-icon').className = 'material-symbols-outlined text-3xl text-emerald-400';
+            document.getElementById('alert-message').textContent = alert.warning_message;
+            document.getElementById('alert-badge').textContent = 'Stable Path';
+            document.getElementById('alert-badge').className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+        }
+
+        // Render SWOT (Pros & Cons)
+        const prosBox = document.getElementById('pros-container');
+        const consBox = document.getElementById('cons-container');
+        const swot = data.pros_and_cons || {};
+
+        prosBox.innerHTML = (swot.pros || []).map(p => `
+            <div class="p-3 rounded-lg bg-surface-container-low border border-white/5 space-y-1">
+                <div class="flex items-center justify-between">
+                    <h5 class="text-sm font-bold text-on-surface flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-emerald-400 text-base">check_circle</span>
+                        ${p.title}
+                    </h5>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 uppercase">${p.tag || 'Catalyst'}</span>
+                </div>
+                <p class="text-xs text-on-surface-variant leading-relaxed pl-6">${p.desc}</p>
+            </div>
+        `).join('');
+
+        consBox.innerHTML = (swot.cons || []).map(c => `
+            <div class="p-3 rounded-lg bg-surface-container-low border border-white/5 space-y-1">
+                <div class="flex items-center justify-between">
+                    <h5 class="text-sm font-bold text-on-surface flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-red-400 text-base">report_problem</span>
+                        ${c.title}
+                    </h5>
+                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-red-500/10 text-red-300 uppercase">${c.tag || 'Risk'}</span>
+                </div>
+                <p class="text-xs text-on-surface-variant leading-relaxed pl-6">${c.desc}</p>
+            </div>
+        `).join('');
+
+        container.classList.remove('hidden');
+
+        // Render Chart with Confidence Corridors
+        const ctx = document.getElementById('forecast-chart').getContext('2d');
+        if (forecastChart) forecastChart.destroy();
+
+        const datasets = [
+            {
+                label: `Projected Price (${currSym})`,
+                data: data.predictions,
+                borderColor: up ? '#adc6ff' : '#ffb4ab',
+                borderWidth: 2.8,
+                backgroundColor: up ? 'rgba(173,198,255,0.06)' : 'rgba(255,180,171,0.06)',
+                fill: false,
+                tension: 0.35,
+                pointRadius: 2,
+                pointHoverRadius: 5
+            }
+        ];
+
+        if (data.upper_band && data.lower_band) {
+            datasets.push({
+                label: 'Upper Band (+1σ)',
+                data: data.upper_band,
+                borderColor: 'rgba(255,255,255,0.15)',
+                borderWidth: 1,
+                borderDash: [4, 4],
+                fill: false,
+                pointRadius: 0
+            });
+            datasets.push({
+                label: 'Lower Band (-1σ)',
+                data: data.lower_band,
+                borderColor: 'rgba(255,255,255,0.15)',
+                borderWidth: 1,
+                borderDash: [4, 4],
+                fill: false,
+                pointRadius: 0
+            });
+        }
+
+        forecastChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.dates,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#0a0e14',
+                        borderColor: 'rgba(255, 255, 255, 0.15)',
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: function(ctx) {
+                                return ` ${ctx.dataset.label}: ${currSym} ${ctx.parsed.y.toFixed(2)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.03)' },
+                        ticks: { color: '#8c909f', maxTicksLimit: 12 }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: {
+                            color: '#8c909f',
+                            callback: function(val) { return currSym + ' ' + val; }
+                        }
+                    }
+                }
+            }
+        });
+
+    } catch (e) {
+        spinner.classList.add('hidden');
+        document.getElementById('error-message').textContent = 'Network error fetching neural forecast.';
+        errorCard.classList.remove('hidden');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadForecast();
+    initTickerAutocomplete(
+        document.getElementById('forecast-ticker-input'),
+        document.getElementById('forecast-ticker-dropdown')
+    );
+});
+</script>
+{% endblock %}
+

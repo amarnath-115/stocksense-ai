@@ -1,0 +1,53 @@
+<div id="app-bg" class="app-bg-wealth" aria-hidden="true">
+<style>
+  .app-bg-wealth{ position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none;
+    background:linear-gradient(to bottom, #140f0a 0%, #0e0b07 55%, #08050300 100%), #05070b; }
+  .app-bg-wealth .bgw-sun{ position:absolute; left:50%; top:64%; width:520px; height:520px; transform:translate(-50%,-50%);
+    border-radius:50%; background:radial-gradient(circle, rgba(240,180,41,0.22), rgba(240,180,41,0.05) 45%, transparent 70%);
+    animation:bgwSunPulse 6s ease-in-out infinite; }
+  @keyframes bgwSunPulse{0%,100%{opacity:0.6;transform:translate(-50%,-50%) scale(1);}50%{opacity:0.85;transform:translate(-50%,-50%) scale(1.07);}}
+  .app-bg-wealth .bgw-mrange{ position:absolute; bottom:0; width:200%; height:50%; opacity:0.55; }
+  .app-bg-wealth .bgw-l1{animation:bgwDrift 70s linear infinite;}
+  .app-bg-wealth .bgw-l2{animation:bgwDrift 46s linear infinite;}
+  .app-bg-wealth .bgw-l3{animation:bgwDrift 30s linear infinite;}
+  @keyframes bgwDrift{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+  .app-bg-wealth .bgw-firefly{ position:absolute; border-radius:50%; background:#f0b429; animation-name:bgwRise; animation-timing-function:ease-in-out; animation-iteration-count:infinite; }
+  @keyframes bgwRise{ 0%{transform:translate(0,0);opacity:0;} 15%{opacity:0.7;} 50%{transform:translate(12px,-50vh);} 85%{opacity:0.3;} 100%{transform:translate(-8px,-102vh);opacity:0;} }
+  @media (prefers-reduced-motion: reduce){ .app-bg-wealth *{ animation:none !important; } }
+</style>
+<div class="bgw-sun"></div>
+<svg class="bgw-mrange" viewBox="0 0 2400 500" preserveAspectRatio="none">
+  <path class="bgw-l1" id="bgw-p1" fill="#3a4636"></path>
+  <path class="bgw-l2" id="bgw-p2" fill="#5c5030"></path>
+  <path class="bgw-l3" id="bgw-p3" fill="#8a6c2e"></path>
+</svg>
+<div id="bgw-fireflies"></div>
+</div>
+<script>
+(function(){
+  function mountainPath(width, period, amp, baseline, seedOffset){
+    let d='M0,'+(baseline+60)+' ';
+    for (let x=0;x<=width;x+=20){
+      const y = baseline - amp*(0.5+0.5*Math.sin((x/period)*2*Math.PI+seedOffset)) - amp*0.35*Math.sin((x/(period/2))*2*Math.PI+seedOffset*1.7);
+      d+='L'+x+','+y.toFixed(1)+' ';
+    }
+    d+='L'+width+','+(baseline+60)+' Z';
+    return d;
+  }
+  document.getElementById('bgw-p1').setAttribute('d', mountainPath(2400,400,40,340,0));
+  document.getElementById('bgw-p2').setAttribute('d', mountainPath(2400,400,60,380,2));
+  document.getElementById('bgw-p3').setAttribute('d', mountainPath(2400,400,85,430,4));
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduceMotion) return;
+  const wrap = document.getElementById('bgw-fireflies');
+  for (let i=0;i<22;i++){
+    const el=document.createElement('div'); el.className='bgw-firefly';
+    const size=2+Math.random()*3, dur=10+Math.random()*14;
+    el.style.left=(Math.random()*100)+'vw'; el.style.bottom='-10px'; el.style.width=size+'px'; el.style.height=size+'px';
+    el.style.boxShadow='0 0 7px rgba(240,180,41,0.75)';
+    el.style.animationDuration=dur+'s'; el.style.animationDelay=(-Math.random()*dur).toFixed(2)+'s';
+    wrap.appendChild(el);
+  }
+})();
+</script>

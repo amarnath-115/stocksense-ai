@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>{% block title %}Stocksense AI{% endblock %}</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                colors: {
+                    "on-tertiary": "#3c0091", "on-surface-variant": "#c2c6d6", "on-secondary": "#003640",
+                    "surface-container": "#1c2026", "surface-container-highest": "#31353c",
+                    "surface-dim": "#10141a", "surface": "#10141a", "background": "#10141a",
+                    "surface-variant": "#31353c", "surface-container-lowest": "#0a0e14",
+                    "on-primary": "#002e6a", "tertiary": "#d0bcff", "on-secondary-container": "#00424e",
+                    "surface-bright": "#353940", "outline-variant": "#424754", "on-error": "#690005",
+                    "on-surface": "#dfe2eb", "surface-container-low": "#181c22", "on-error-container": "#ffdad6",
+                    "outline": "#8c909f", "secondary-container": "#03b5d3", "tertiary-container": "#a078ff",
+                    "primary": "#adc6ff", "primary-container": "#4d8eff", "on-primary-container": "#00285d",
+                    "on-background": "#dfe2eb", "on-tertiary-container": "#340080", "error": "#ffb4ab",
+                    "error-container": "#93000a", "secondary": "#4cd7f6"
+                },
+                borderRadius: { DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px" },
+                spacing: { lg: "24px", "container-max": "1440px", "margin-mobile": "16px", xl: "40px", sm: "8px", gutter: "24px", base: "4px", xs: "4px", md: "16px" },
+                fontFamily: {
+                    "headline-lg-mobile": ["Plus Jakarta Sans"], "headline-md": ["Plus Jakarta Sans"], "headline-lg": ["Plus Jakarta Sans"],
+                    "body-md": ["Inter"], "display-lg": ["Plus Jakarta Sans"], "label-md": ["Inter"], "label-sm": ["Inter"], "body-lg": ["Inter"]
+                },
+                fontSize: {
+                    "headline-lg-mobile": ["24px", { lineHeight: "1.2", fontWeight: "600" }],
+                    "headline-md": ["24px", { lineHeight: "1.3", fontWeight: "600" }],
+                    "headline-lg": ["32px", { lineHeight: "1.2", letterSpacing: "-0.01em", fontWeight: "600" }],
+                    "body-md": ["16px", { lineHeight: "1.5", fontWeight: "400" }],
+                    "display-lg": ["48px", { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "700" }],
+                    "label-md": ["14px", { lineHeight: "1.2", letterSpacing: "0.02em", fontWeight: "500" }],
+                    "label-sm": ["12px", { lineHeight: "1.1", fontWeight: "600" }],
+                    "body-lg": ["18px", { lineHeight: "1.6", fontWeight: "400" }]
+                }
+            }
+        }
+    }
+</script>
+<style>
+    body { background-color: #05070b; }
+    .glass-panel { background-color: #0A0E14; border: 1px solid rgba(255, 255, 255, 0.08); }
+    .ai-glow { background: radial-gradient(circle at top right, rgba(160, 120, 255, 0.1), transparent 60%); }
+    .trend-up { stroke: #10B981; } .trend-down { stroke: #EF4444; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #10141a; }
+    ::-webkit-scrollbar-thumb { background: #31353c; border-radius: 4px; }
+</style>
+{% block extra_head %}{% endblock %}
+</head>
+<body class="text-on-surface font-body-md text-body-md selection:bg-primary-container selection:text-on-primary-container min-h-screen flex">
+{% set active_page = request.endpoint %}
+{% set bg_theme_map = {
+    'dashboard': 'dashboard', 'company_analysis': 'company_analysis', 'forecast_page': 'forecast',
+    'compare': 'compare', 'planner': 'planner', 'advisor_page': 'advisor',
+    'portfolio': 'wealth', 'macro': 'network', 'tools': 'market', 'settings': 'none'
+} %}
+{% set bg_theme = bg_theme_map.get(active_page, 'market') %}
+{% if bg_theme == 'dashboard' %}{% include 'partials/bg_dashboard.html' %}
+{% elif bg_theme == 'company_analysis' %}{% include 'partials/bg_company_analysis.html' %}
+{% elif bg_theme == 'forecast' %}{% include 'partials/bg_forecast.html' %}
+{% elif bg_theme == 'compare' %}{% include 'partials/bg_compare.html' %}
+{% elif bg_theme == 'planner' %}{% include 'partials/bg_planner.html' %}
+{% elif bg_theme == 'advisor' %}{% include 'partials/bg_advisor.html' %}
+{% elif bg_theme == 'market' %}{% include 'partials/bg_market.html' %}
+{% elif bg_theme == 'wealth' %}{% include 'partials/bg_wealth.html' %}
+{% elif bg_theme == 'network' %}{% include 'partials/bg_network.html' %}
+{% endif %}
+<nav class="bg-surface-container-lowest h-full w-72 flex-col fixed left-0 top-0 border-r border-white/5 bg-opacity-70 backdrop-blur-xl shadow-2xl flex justify-between hidden md:flex py-lg px-md z-50">
+<div>
+<div class="mb-xl px-sm">
+<a href="{{ url_for('dashboard') }}" class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Stocksense AI</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Premium Fintech</p>
+</div>
+</a>
+</div>
+<div class="flex flex-col gap-sm overflow-y-auto max-h-[calc(100vh-210px)] pr-1">
+{% macro navlink(endpoint, icon, label) %}
+{% set is_active = (active_page == endpoint) or (active_page == endpoint|replace('_page', '')) or (active_page ~ '_page' == endpoint) %}
+<a class="flex items-center gap-md px-md py-sm rounded-lg transition-all duration-300 ease-in-out active:scale-95 hover:bg-white/5 {% if is_active %}text-primary font-bold bg-primary/10 border-l-2 border-primary shadow-sm{% else %}text-on-surface-variant hover:text-on-surface{% endif %}" href="{{ url_for(endpoint) }}">
+<span class="material-symbols-outlined text-xl">{{ icon }}</span>
+<span class="font-label-md text-label-md">{{ label }}</span>
+</a>
+{% endmacro %}
+{{ navlink('dashboard', 'dashboard', 'Dashboard') }}
+{{ navlink('company_analysis', 'analytics', 'Company Analysis') }}
+{{ navlink('forecast_page', 'psychology', 'AI Deep Forecast') }}
+{{ navlink('compare', 'compare_arrows', 'Compare Stocks') }}
+{{ navlink('planner', 'psychology_alt', 'Investment Planner') }}
+{{ navlink('advisor_page', 'supervised_user_circle', 'AI Advisor') }}
+{{ navlink('portfolio', 'account_balance_wallet', 'Portfolio') }}
+{{ navlink('macro', 'public', 'MacroPulse') }}
+{{ navlink('tools', 'build', 'Financial Tools') }}
+<div class="mt-md pt-sm border-t border-white/5">
+{{ navlink('settings', 'settings', 'Settings') }}
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2.5 px-md py-sm text-on-surface-variant rounded-lg">
+<span class="material-symbols-outlined text-primary">account_circle</span>
+<div class="truncate leading-tight">
+    <span class="font-label-md text-label-md block text-on-surface truncate font-semibold">{{ user_name or 'Trader' }}</span>
+    {% if user and user.mobile %}
+    <span class="text-[11px] text-primary/80 font-mono block truncate">+91 {{ user.mobile }}</span>
+    {% endif %}
+</div>
+</div>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:text-error transition-colors rounded-lg" href="{{ url_for('logout') }}">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Log Out</span>
+</a>
+</div>
+</nav>
+
+<main class="flex-1 ml-0 md:ml-72 min-h-screen">
+<header class="bg-surface/60 top-0 sticky z-40 backdrop-blur-xl border-b border-white/10 shadow-sm flex justify-between items-center w-full px-md md:px-xl py-md">
+<div class="flex items-center gap-md md:hidden">
+<span class="material-symbols-outlined text-primary text-3xl">analytics</span>
+<h1 class="font-headline-md text-headline-md font-extrabold text-primary">Stocksense AI</h1>
+</div>
+<div class="hidden md:block relative" id="header-search-wrap">
+<form action="{{ url_for('company_analysis') }}" method="get" class="relative" autocomplete="off">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input id="header-search-input" name="ticker" class="bg-surface-container-highest border border-white/10 rounded-full py-2 pl-10 pr-4 text-on-surface font-label-md focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none w-64 transition-all bg-opacity-50" placeholder="Search ticker or company name" type="text"/>
+</form>
+<div id="header-search-dropdown" class="hidden absolute left-0 top-full mt-2 w-80 max-h-80 overflow-y-auto bg-surface-container-lowest border border-white/10 rounded-lg shadow-2xl z-50"></div>
+</div>
+<div class="flex items-center gap-lg">
+<button class="text-on-surface-variant hover:text-on-surface transition-all hover:bg-white/5 rounded-full p-2 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<div class="w-8 h-8 rounded-full bg-primary/20 border border-white/20 flex items-center justify-center font-label-md text-primary font-bold">
+{{ (user_name or 'T')[0]|upper }}
+</div>
+</div>
+</header>
+<div class="p-4 md:p-xl max-w-container-max mx-auto space-y-xl">
+{% block content %}{% endblock %}
+</div>
+</main>
+
+<script>
+// Catalog is injected on every page via context processor
+const TICKER_CATALOG = {{ ticker_catalog | tojson if ticker_catalog else '{}' }};
+
+function initTickerAutocomplete(inputEl, dropdownEl, onSelect) {
+    if (!inputEl || !dropdownEl) return;
+    const entries = Object.entries(TICKER_CATALOG);
+
+    function render(filterText) {
+        const q = (filterText || "").trim().toUpperCase();
+        const matches = q
+            ? entries.filter(([sym, name]) => sym.toUpperCase().includes(q) || name.toUpperCase().includes(q))
+            : entries;
+        if (matches.length === 0) {
+            dropdownEl.innerHTML = '<div class="px-4 py-3 text-sm text-on-surface-variant">No matching companies</div>';
+        } else {
+            dropdownEl.innerHTML = matches.slice(0, 30).map(([sym, name]) => `
+                <button type="button" data-sym="${sym}" class="ticker-option w-full text-left px-4 py-2.5 hover:bg-white/5 flex justify-between items-center gap-3 border-b border-white/5 last:border-0">
+                    <span class="text-sm text-on-surface truncate">${name}</span>
+                    <span class="text-xs font-semibold text-primary shrink-0">${sym}</span>
+                </button>`).join('');
+        }
+        dropdownEl.classList.remove('hidden');
+    }
+
+    inputEl.addEventListener('focus', () => render(inputEl.value));
+    inputEl.addEventListener('input', () => render(inputEl.value));
+    inputEl.addEventListener('keydown', (e) => { if (e.key === 'Escape') dropdownEl.classList.add('hidden'); });
+
+    dropdownEl.addEventListener('click', (e) => {
+        const btn = e.target.closest('.ticker-option');
+        if (!btn) return;
+        const sym = btn.dataset.sym;
+        inputEl.value = sym;
+        dropdownEl.classList.add('hidden');
+        if (onSelect) onSelect(sym);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!inputEl.contains(e.target) && !dropdownEl.contains(e.target)) {
+            dropdownEl.classList.add('hidden');
+        }
+    });
+}
+
+// --- Indian Currency Formatting Utilities ---
+function formatIndianCurrency(num) {
+    if (num === null || num === undefined || isNaN(num)) return { formatted: '₹0', words: '0', display: '₹ 0' };
+    num = Number(num);
+    const abs = Math.abs(num);
+    const sign = num < 0 ? '-' : '';
+
+    // Convert to Indian format with commas (e.g. 10000000 -> 1,00,00,000)
+    const str = Math.round(abs).toString();
+    let formattedNum = str;
+    if (str.length > 3) {
+        let lastThree = str.substring(str.length - 3);
+        let remaining = str.substring(0, str.length - 3);
+        formattedNum = remaining.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + lastThree;
+    }
+
+    // Word description (Crores, Lakhs, Thousands)
+    let wordDesc = '';
+    if (abs >= 10000000) { // 1 Crore+
+        const cr = (abs / 10000000);
+        wordDesc = cr >= 10 ? `${cr.toFixed(1)} Crores` : `${cr.toFixed(2)} Crore`;
+    } else if (abs >= 100000) { // 1 Lakh+
+        const lk = (abs / 100000);
+        wordDesc = `${lk.toFixed(2)} Lakhs`;
+    } else if (abs >= 1000) { // 1 Thousand+
+        const k = (abs / 1000);
+        wordDesc = `${k.toFixed(1)} Thousand`;
+    } else {
+        wordDesc = `${abs}`;
+    }
+    wordDesc = wordDesc.replace('.00', '').replace('.0', '');
+
+    return {
+        formatted: `${sign}₹ ${formattedNum}`,
+        words: wordDesc,
+        display: `${sign}₹ ${formattedNum} (${wordDesc})`
+    };
+}
+
+function attachCurrencyBadges() {
+    const selectors = [
+        'input[type="number"][id*="amount"]',
+        'input[type="number"][id*="corpus"]',
+        'input[type="number"][id*="monthly"]',
+        'input[type="number"][id*="target"]',
+        'input[type="number"][id*="initial"]',
+        'input[type="number"][id*="income"]',
+        'input[type="number"][id*="savings"]',
+        'input[type="number"][id*="inv"]',
+        'input.currency-input',
+        'input[data-currency="true"]'
+    ];
+    
+    document.querySelectorAll(selectors.join(', ')).forEach(input => {
+        if (input.dataset.currencyAttached) return;
+        const id = (input.id || '').toLowerCase();
+        if (id.includes('rate') || id.includes('years') || id.includes('pct') || id.includes('days') || id.includes('age') || id.includes('brokerage') || id.includes('stamp') || id.includes('gst')) return;
+        
+        input.dataset.currencyAttached = "true";
+        
+        const badge = document.createElement('div');
+        badge.className = 'currency-live-badge text-xs font-medium text-primary mt-1.5 flex items-center gap-1.5 px-2.5 py-1 rounded bg-primary/10 border border-primary/20 w-fit transition-all duration-200';
+        badge.innerHTML = '<span class="material-symbols-outlined text-xs">payments</span><span class="badge-text"></span>';
+        if (input.nextSibling) {
+            input.parentNode.insertBefore(badge, input.nextSibling);
+        } else {
+            input.parentNode.appendChild(badge);
+        }
+        
+        const update = () => {
+            const val = parseFloat(input.value);
+            if (!isNaN(val) && val > 0) {
+                const info = formatIndianCurrency(val);
+                badge.querySelector('.badge-text').textContent = `${info.formatted} • ${info.words}`;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        };
+        
+        input.addEventListener('input', update);
+        update();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initTickerAutocomplete(
+        document.getElementById('header-search-input'),
+        document.getElementById('header-search-dropdown'),
+        (sym) => document.getElementById('header-search-input').closest('form').submit()
+    );
+    attachCurrencyBadges();
+    initGeminiCopilot();
+});
+
+// --- Gemini AI Copilot Global Controller ---
+function initGeminiCopilot() {
+    const chatBtn = document.getElementById('gemini-copilot-btn');
+    const chatDrawer = document.getElementById('gemini-copilot-drawer');
+    const closeBtn = document.getElementById('gemini-close-btn');
+    const sendBtn = document.getElementById('gemini-send-btn');
+    const inputEl = document.getElementById('gemini-input');
+    const messagesEl = document.getElementById('gemini-messages');
+    const keyModal = document.getElementById('gemini-key-modal');
+    const keyBtn = document.getElementById('gemini-key-btn');
+    const keySaveBtn = document.getElementById('gemini-save-key-btn');
+    const keyInput = document.getElementById('gemini-api-key-input');
+    const keyStatusEl = document.getElementById('gemini-key-status');
+
+    if (!chatBtn || !chatDrawer) return;
+
+    let chatHistory = [];
+
+    // Toggle drawer
+    chatBtn.addEventListener('click', () => {
+        chatDrawer.classList.toggle('hidden');
+        if (!chatDrawer.classList.contains('hidden')) {
+            inputEl.focus();
+            checkKeyStatus();
+        }
+    });
+
+    closeBtn.addEventListener('click', () => chatDrawer.classList.add('hidden'));
+
+    // Key Modal
+    keyBtn.addEventListener('click', () => {
+        keyModal.classList.remove('hidden');
+        checkKeyStatus();
+    });
+
+    document.getElementById('gemini-key-close').addEventListener('click', () => keyModal.classList.add('hidden'));
+
+    async function checkKeyStatus() {
+        try {
+            const res = await fetch('/api/ai/get-key-status');
+            const data = await res.json();
+            if (data.has_key) {
+                keyStatusEl.textContent = `Active Key: ${data.preview}`;
+                keyStatusEl.className = 'text-xs text-emerald-400 font-mono';
+            } else {
+                keyStatusEl.textContent = 'Running on Offline Quant Engine (Add free Gemini key for full LLM reasoning)';
+                keyStatusEl.className = 'text-xs text-amber-400/90';
+            }
+        } catch(e) {}
+    }
+
+    keySaveBtn.addEventListener('click', async () => {
+        const key = keyInput.value.trim();
+        if (!key) return;
+        try {
+            const res = await fetch('/api/ai/set-key', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ key })
+            });
+            const d = await res.json();
+            if (d.ok) {
+                keyInput.value = '';
+                keyModal.classList.add('hidden');
+                checkKeyStatus();
+                appendMessage('ai', '✅ **Google Gemini API Key Connected!** You now have unrestricted access to Gemini 1.5 Flash conversational reasoning.');
+            }
+        } catch(e) {
+            alert('Failed to save API key.');
+        }
+    });
+
+    function appendMessage(sender, text) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = sender === 'user' ? 'flex justify-end' : 'flex justify-start';
+        
+        // Simple Markdown parser for bold, bullets, headers
+        let formatted = text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/### (.*?)\n/g, '<h4 class="font-bold text-primary mt-2 mb-1">$1</h4>')
+            .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 rounded bg-white/10 font-mono text-[11px]">$1</code>')
+            .replace(/\n\n/g, '<div class="h-2"></div>')
+            .replace(/\n- (.*?)/g, '<div class="flex items-start gap-1.5 ml-1 mt-0.5">• <span>$1</span></div>');
+
+        const bubble = document.createElement('div');
+        if (sender === 'user') {
+            bubble.className = 'max-w-[85%] bg-primary text-slate-950 font-medium text-xs px-3.5 py-2.5 rounded-2xl rounded-tr-sm shadow-md';
+            bubble.textContent = text;
+        } else {
+            bubble.className = 'max-w-[90%] bg-surface-container-high border border-white/10 text-on-surface text-xs p-3 rounded-2xl rounded-tl-sm shadow-md leading-relaxed';
+            bubble.innerHTML = formatted;
+        }
+
+        msgDiv.appendChild(bubble);
+        messagesEl.appendChild(msgDiv);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    async function sendMessage(text) {
+        const msg = text || inputEl.value.trim();
+        if (!msg) return;
+
+        inputEl.value = '';
+        appendMessage('user', msg);
+        chatHistory.push({ sender: 'user', text: msg });
+
+        // Show typing indicator
+        const typingId = 'typing-' + Date.now();
+        const typingEl = document.createElement('div');
+        typingEl.id = typingId;
+        typingEl.className = 'flex justify-start';
+        typingEl.innerHTML = `
+            <div class="bg-surface-container-high border border-white/10 text-primary text-xs px-3 py-2 rounded-2xl rounded-tl-sm flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
+                <span>Gemini is analyzing...</span>
+            </div>
+        `;
+        messagesEl.appendChild(typingEl);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+
+        try {
+            const res = await fetch('/api/ai/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ message: msg, history: chatHistory })
+            });
+            const data = await res.json();
+            const el = document.getElementById(typingId);
+            if (el) el.remove();
+
+            if (data.ok) {
+                appendMessage('ai', data.reply);
+                chatHistory.push({ sender: 'ai', text: data.reply });
+            } else {
+                appendMessage('ai', '⚠️ ' + (data.error || 'Could not process query.'));
+            }
+        } catch(err) {
+            const el = document.getElementById(typingId);
+            if (el) el.remove();
+            appendMessage('ai', '⚠️ Network error communicating with AI service.');
+        }
+    }
+
+    sendBtn.addEventListener('click', () => sendMessage());
+    inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+
+    // Quick prompt chip handlers
+    document.querySelectorAll('.gemini-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            sendMessage(chip.dataset.prompt);
+        });
+    });
+}
+</script>
+
+<!-- FLOATING GEMINI COPILOT BUTTON -->
+<div class="fixed bottom-5 right-5 z-50">
+  <button id="gemini-copilot-btn" class="group relative flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-gradient-to-r from-primary/90 to-secondary/90 hover:from-primary hover:to-secondary text-slate-950 font-bold text-xs shadow-2xl shadow-primary/30 transition-all duration-300 hover:scale-105 active:scale-95">
+    <span class="material-symbols-outlined text-base group-hover:rotate-12 transition-transform">psychology</span>
+    <span class="tracking-tight">Ask Stocksense AI</span>
+    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+  </button>
+</div>
+
+<!-- GEMINI CONVERSATIONAL COPILOT DRAWER -->
+<div id="gemini-copilot-drawer" class="hidden fixed bottom-20 right-4 md:right-8 z-50 w-[92vw] sm:w-[420px] max-h-[600px] h-[550px] glass-panel rounded-3xl border border-white/20 shadow-2xl flex flex-col overflow-hidden transition-all duration-300">
+  
+  <!-- Drawer Header -->
+  <div class="p-4 border-b border-white/10 bg-surface-container-lowest/80 flex justify-between items-center">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-slate-950 font-black shadow-md">
+        <span class="material-symbols-outlined text-sm">psychology</span>
+      </div>
+      <div>
+        <h4 class="font-headline font-bold text-sm text-primary flex items-center gap-1.5">
+          Stocksense AI Copilot
+          <span class="text-[9px] px-1.5 py-0.2 rounded bg-secondary/15 text-secondary border border-secondary/20">Gemini 1.5</span>
+        </h4>
+        <p class="text-[10px] text-on-surface-variant">Context-aware Portfolio &amp; Market Intelligence</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-1">
+      <button id="gemini-key-btn" title="API Key Setup" class="text-on-surface-variant hover:text-primary p-1.5 rounded-lg hover:bg-white/5 transition-colors">
+        <span class="material-symbols-outlined text-sm">key</span>
+      </button>
+      <button id="gemini-close-btn" class="text-on-surface-variant hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition-colors">
+        <span class="material-symbols-outlined text-sm">close</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Messages Scroll Area -->
+  <div id="gemini-messages" class="flex-1 p-4 overflow-y-auto space-y-3">
+    <!-- Welcome Greeting -->
+    <div class="flex justify-start">
+      <div class="max-w-[90%] bg-surface-container-high border border-white/10 text-on-surface text-xs p-3.5 rounded-2xl rounded-tl-sm leading-relaxed">
+        👋 **Hello Trader!** I am your Stocksense Copilot powered by Google Gemini.
+        <div class="h-1.5"></div>
+        I have full visibility into your live portfolio, risk exposure, and today's market momentum. Ask me anything, or tap a quick prompt below:
+      </div>
+    </div>
+  </div>
+
+  <!-- Suggestion Prompt Chips -->
+  <div class="px-4 py-2 border-t border-white/5 bg-white/[0.02] flex gap-1.5 overflow-x-auto no-scrollbar text-[11px]">
+    <button class="gemini-chip whitespace-nowrap px-2.5 py-1 rounded-full bg-white/5 hover:bg-primary/20 text-on-surface-variant hover:text-primary border border-white/10 transition-colors" data-prompt="Analyze my portfolio risk and concentration">
+      🛡️ Risk Check
+    </button>
+    <button class="gemini-chip whitespace-nowrap px-2.5 py-1 rounded-full bg-white/5 hover:bg-primary/20 text-on-surface-variant hover:text-primary border border-white/10 transition-colors" data-prompt="What rebalancing actions should I take right now?">
+      ⚖️ Rebalance
+    </button>
+    <button class="gemini-chip whitespace-nowrap px-2.5 py-1 rounded-full bg-white/5 hover:bg-primary/20 text-on-surface-variant hover:text-primary border border-white/10 transition-colors" data-prompt="Summarize today's market trend and sentiment">
+      🌐 Market Mood
+    </button>
+    <button class="gemini-chip whitespace-nowrap px-2.5 py-1 rounded-full bg-white/5 hover:bg-primary/20 text-on-surface-variant hover:text-primary border border-white/10 transition-colors" data-prompt="Give me a 3-point strategy for long term compounding">
+      📈 Wealth Strategy
+    </button>
+  </div>
+
+  <!-- Input Bar -->
+  <div class="p-3 border-t border-white/10 bg-surface-container-lowest/90 flex items-center gap-2">
+    <input id="gemini-input" type="text" placeholder="Ask about your stocks, risk, or strategy..." class="flex-1 bg-surface-container-highest border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary transition-colors"/>
+    <button id="gemini-send-btn" class="w-9 h-9 rounded-xl bg-primary text-slate-950 flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-md">
+      <span class="material-symbols-outlined text-sm">send</span>
+    </button>
+  </div>
+</div>
+
+<!-- GEMINI API KEY SETUP MODAL -->
+<div id="gemini-key-modal" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
+  <div class="glass-panel rounded-2xl p-6 max-w-md w-full border border-white/15 shadow-2xl">
+    <div class="flex justify-between items-center mb-3">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-xl">key</span>
+        <h4 class="font-headline font-bold text-base text-on-surface">Connect Free Gemini API Key</h4>
+      </div>
+      <button id="gemini-key-close" class="text-on-surface-variant hover:text-white p-1">
+        <span class="material-symbols-outlined text-sm">close</span>
+      </button>
+    </div>
+
+    <p class="text-xs text-on-surface-variant leading-relaxed mb-3">
+      Google AI Studio provides a <strong class="text-emerald-400">100% Free Tier</strong> for Gemini 1.5 Flash (up to 1,500 questions/day) without requiring a credit card.
+    </p>
+
+    <div class="mb-4">
+      <label class="block text-[11px] font-semibold uppercase text-on-surface-variant mb-1">Google Gemini API Key</label>
+      <input id="gemini-api-key-input" type="password" placeholder="AIzaSy..." class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-xs text-on-surface focus:border-primary focus:outline-none font-mono"/>
+      <div class="mt-2 flex justify-between items-center">
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="text-[11px] text-primary hover:underline flex items-center gap-1">
+          Get a free key at Google AI Studio <span class="material-symbols-outlined text-xs">open_in_new</span>
+        </a>
+      </div>
+      <p id="gemini-key-status" class="mt-2 text-xs text-on-surface-variant"></p>
+    </div>
+
+    <div class="flex justify-end gap-2">
+      <button onclick="document.getElementById('gemini-key-modal').classList.add('hidden')" class="px-3.5 py-1.5 text-xs rounded-lg border border-white/10 hover:bg-white/5">Cancel</button>
+      <button id="gemini-save-key-btn" class="px-4 py-1.5 text-xs rounded-lg bg-primary text-slate-950 font-bold hover:opacity-90">Save Key</button>
+    </div>
+  </div>
+</div>
+
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

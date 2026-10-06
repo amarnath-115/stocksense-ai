@@ -1,0 +1,57 @@
+<div id="app-bg" class="app-bg-network" aria-hidden="true">
+<style>
+  .app-bg-network{ position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none;
+    background:radial-gradient(ellipse 900px 600px at 50% 45%, rgba(59,130,246,0.07), transparent 65%), #05070b; }
+  .app-bg-network .bgn-star{ position:absolute; border-radius:50%; background:#fff; animation-name:bgnTwinkle; animation-timing-function:ease-in-out; animation-iteration-count:infinite; opacity:0.5; }
+  @keyframes bgnTwinkle{0%,100%{opacity:0.1;}50%{opacity:0.6;}}
+  .app-bg-network .bgn-orbit{ position:absolute; border:1px dashed rgba(34,211,238,0.1); border-radius:50%; top:50%; left:50%; animation:bgnSpin linear infinite; }
+  @keyframes bgnSpin{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}
+  .app-bg-network .bgn-svg{ position:absolute; inset:0; width:100%; height:100%; opacity:0.55; }
+  .app-bg-network .bgn-link{ fill:none; stroke:rgba(59,130,246,0.28); stroke-width:1; }
+  .app-bg-network .bgn-node-ring{ fill:rgba(34,211,238,0.06); stroke:#22d3ee; stroke-width:1; animation:bgnNodePulse 3s ease-in-out infinite; }
+  @keyframes bgnNodePulse{0%,100%{opacity:0.4;}50%{opacity:0.8;}}
+  .app-bg-network .bgn-node-label{ font-size:11px; fill:rgba(255,255,255,0.45); }
+  @media (prefers-reduced-motion: reduce){ .app-bg-network *{ animation:none !important; } }
+</style>
+<div id="bgn-stars"></div>
+<div class="bgn-orbit" style="width:900px;height:900px;animation-duration:120s;"></div>
+<div class="bgn-orbit" style="width:640px;height:640px;animation-duration:80s;"></div>
+<svg class="bgn-svg" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid meet">
+  <path id="bgn-ln1" class="bgn-link" d="M150,250 L520,180"></path>
+  <path id="bgn-ln2" class="bgn-link" d="M520,180 L300,420"></path>
+  <path id="bgn-ln3" class="bgn-link" d="M300,420 L880,420"></path>
+  <path id="bgn-ln4" class="bgn-link" d="M880,420 L1000,300"></path>
+  <path id="bgn-ln5" class="bgn-link" d="M1000,300 L1020,560"></path>
+  <path id="bgn-ln6" class="bgn-link" d="M300,420 L1000,300"></path>
+  <path id="bgn-ln7" class="bgn-link" d="M150,250 L300,420"></path>
+  <circle cx="4" cy="4" r="3.5" fill="#22d3ee"><animateMotion dur="4.5s" repeatCount="indefinite"><mpath href="#bgn-ln1"></mpath></animateMotion></circle>
+  <circle cx="4" cy="4" r="3.5" fill="#3b82f6"><animateMotion dur="5.5s" repeatCount="indefinite"><mpath href="#bgn-ln2"></mpath></animateMotion></circle>
+  <circle cx="4" cy="4" r="3.5" fill="#22d3ee"><animateMotion dur="6.2s" repeatCount="indefinite"><mpath href="#bgn-ln3"></mpath></animateMotion></circle>
+  <circle cx="4" cy="4" r="3.5" fill="#c084fc"><animateMotion dur="4s" repeatCount="indefinite"><mpath href="#bgn-ln4"></mpath></animateMotion></circle>
+  <circle cx="4" cy="4" r="3.5" fill="#3b82f6"><animateMotion dur="5s" repeatCount="indefinite"><mpath href="#bgn-ln5"></mpath></animateMotion></circle>
+  <circle cx="4" cy="4" r="3.5" fill="#22d3ee"><animateMotion dur="7s" repeatCount="indefinite"><mpath href="#bgn-ln6"></mpath></animateMotion></circle>
+  <circle cx="4" cy="4" r="3.5" fill="#c084fc"><animateMotion dur="5.8s" repeatCount="indefinite"><mpath href="#bgn-ln7"></mpath></animateMotion></circle>
+  <g>
+    <circle class="bgn-node-ring" cx="150" cy="250" r="14"></circle><text class="bgn-node-label" x="150" y="232" text-anchor="middle">NYSE</text>
+    <circle class="bgn-node-ring" cx="520" cy="180" r="14" style="animation-delay:0.4s;"></circle><text class="bgn-node-label" x="520" y="162" text-anchor="middle">LSE</text>
+    <circle class="bgn-node-ring" cx="300" cy="420" r="14" style="animation-delay:0.8s;"></circle><text class="bgn-node-label" x="300" y="448" text-anchor="middle">NSE</text>
+    <circle class="bgn-node-ring" cx="880" cy="420" r="14" style="animation-delay:1.2s;"></circle><text class="bgn-node-label" x="880" y="448" text-anchor="middle">HKEX</text>
+    <circle class="bgn-node-ring" cx="1000" cy="300" r="14" style="animation-delay:1.6s;"></circle><text class="bgn-node-label" x="1000" y="282" text-anchor="middle">TSE</text>
+    <circle class="bgn-node-ring" cx="1020" cy="560" r="14" style="animation-delay:2s;"></circle><text class="bgn-node-label" x="1020" y="588" text-anchor="middle">ASX</text>
+  </g>
+</svg>
+</div>
+<script>
+(function(){
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduceMotion) return;
+  const starWrap = document.getElementById('bgn-stars');
+  for (let i=0;i<70;i++){
+    const s=document.createElement('div'); s.className='bgn-star';
+    const size=1+Math.random()*1.6;
+    s.style.width=size+'px'; s.style.height=size+'px'; s.style.left=(Math.random()*100)+'vw'; s.style.top=(Math.random()*100)+'vh';
+    const dur=2+Math.random()*4; s.style.animationDuration=dur+'s'; s.style.animationDelay=(-Math.random()*dur).toFixed(2)+'s';
+    starWrap.appendChild(s);
+  }
+})();
+</script>

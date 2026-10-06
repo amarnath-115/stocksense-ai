@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% set active_page = 'dashboard' %}
+{% block title %}Stocksense AI - Dashboard{% endblock %}
+{% block content %}
+
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-md">
+<div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-xs">Good to see you, {{ user_name }} 👋</h2>
+<p class="text-on-surface-variant">Here's your market intelligence for today.</p>
+</div>
+<div class="text-right flex items-center gap-md bg-surface-container-low px-md py-sm rounded-lg border border-white/5">
+<div class="text-left">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider">Date (IST)</p>
+<p class="text-label-md text-on-surface">{{ now_ist.strftime('%b %d, %Y') }}</p>
+</div>
+<div class="w-px h-8 bg-white/10"></div>
+<div class="text-left flex items-center gap-sm">
+<div class="w-2 h-2 rounded-full {{ 'bg-emerald-500 animate-pulse' if nse_open else 'bg-red-500' }}"></div>
+<div>
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider">NSE Status</p>
+<p class="text-label-md font-semibold {{ 'text-emerald-400' if nse_open else 'text-red-400' }}">{{ 'Market Open' if nse_open else 'Market Closed' }}</p>
+</div>
+</div>
+</div>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md">
+<div class="glass-panel rounded-xl p-md">
+<div class="flex justify-between items-start mb-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider">NSE (India)</p>
+<span class="material-symbols-outlined {{ 'text-emerald-400' if nse_open else 'text-red-400' }} text-xl">storefront</span>
+</div>
+<h3 class="text-headline-md text-on-surface">{{ 'Open' if nse_open else 'Closed' }}</h3>
+<div class="mt-sm h-1 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full {{ 'bg-emerald-500 w-3/4' if nse_open else 'bg-red-500 w-1/4' }}"></div>
+</div>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<div class="flex justify-between items-start mb-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider">NYSE (US)</p>
+<span class="material-symbols-outlined {{ 'text-emerald-400' if nyse_open else 'text-red-400' }} text-xl">storefront</span>
+</div>
+<h3 class="text-headline-md text-on-surface">{{ 'Open' if nyse_open else 'Closed' }}</h3>
+<div class="mt-sm h-1 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full {{ 'bg-emerald-500 w-3/4' if nyse_open else 'bg-red-500 w-1/4' }}"></div>
+</div>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<div class="flex justify-between items-start mb-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider">Market Sentiment</p>
+<span class="material-symbols-outlined text-primary text-xl">mood</span>
+</div>
+<div class="flex items-center gap-sm">
+<h3 class="text-headline-md {{ 'text-emerald-400' if sentiment_label=='Bullish' else ('text-red-400' if sentiment_label=='Bearish' else 'text-on-surface-variant') }}">{{ sentiment_label }}</h3>
+<span class="px-2 py-1 bg-primary/10 text-primary text-label-sm rounded-md border border-primary/20">{{ avg_sentiment }}</span>
+</div>
+</div>
+<div class="glass-panel rounded-xl p-md">
+<div class="flex justify-between items-start mb-md">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-wider">AI Confidence</p>
+<span class="material-symbols-outlined text-secondary text-xl">psychology</span>
+</div>
+<h3 class="text-headline-md text-secondary">{{ confidence }}%</h3>
+</div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+<div class="glass-panel rounded-xl p-lg ai-glow relative overflow-hidden border border-tertiary-container/30">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<h3 class="text-label-md text-on-surface uppercase tracking-widest font-semibold">Stocksense AI Insight</h3>
+</div>
+<p class="text-body-lg text-on-surface-variant mb-lg leading-relaxed">
+"Market sentiment is currently <strong class="text-on-surface">{{ sentiment_label.lower() }}</strong>, based on live news across a basket of major tech and Indian large-cap stocks. AI confidence in this read is {{ confidence }}%."
+</p>
+<div class="space-y-md">
+<div>
+<div class="flex justify-between text-label-sm mb-xs">
+<span class="text-on-surface-variant">AI Confidence</span>
+<span class="text-tertiary">{{ confidence }}%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-tertiary" style="width:{{ confidence }}%; box-shadow: 0 0 10px rgba(208,188,255,0.5);"></div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-sm">
+<div class="bg-surface-container-low p-sm rounded-lg border border-white/5">
+<p class="text-label-sm text-on-surface-variant">Market Bias</p>
+<p class="text-label-md {{ 'text-emerald-400' if sentiment_label=='Bullish' else ('text-red-400' if sentiment_label=='Bearish' else 'text-on-surface') }}">{{ sentiment_label }}</p>
+</div>
+<div class="bg-surface-container-low p-sm rounded-lg border border-white/5">
+<p class="text-label-sm text-on-surface-variant">NSE / NYSE</p>
+<p class="text-label-md text-primary">{{ 'Open' if nse_open or nyse_open else 'Closed' }}</p>
+</div>
+</div>
+</div>
+<a href="{{ url_for('company_analysis') }}" class="mt-lg inline-flex items-center gap-2 text-primary text-label-sm hover:underline">Explore Company Analysis <span class="material-symbols-outlined text-sm">arrow_forward</span></a>
+</div>
+
+<div class="glass-panel rounded-xl p-0 col-span-1 lg:col-span-2 flex flex-col">
+<div class="p-lg border-b border-white/5 flex justify-between items-center">
+<h3 class="text-headline-md text-on-surface">Market Overview</h3>
+</div>
+<div class="flex border-b border-white/5 px-md overflow-x-auto" id="index-tabs">
+{% for name in index_names %}
+<button class="index-tab px-md py-sm border-b-2 {{ 'border-primary text-primary' if loop.first else 'border-transparent text-on-surface-variant hover:text-on-surface' }} text-label-md whitespace-nowrap" data-index="{{ name }}">{{ name }}</button>
+{% endfor %}
+</div>
+<div class="p-lg flex-1 flex flex-col">
+<div class="flex justify-between items-end mb-md">
+<div>
+<h4 id="index-value" class="text-display-lg text-on-surface"></h4>
+<div class="flex items-center gap-sm mt-xs">
+<span id="index-change-icon" class="material-symbols-outlined text-sm">arrow_upward</span>
+<span id="index-change" class="text-label-md"></span>
+</div>
+</div>
+</div>
+<div class="flex-1 bg-surface-container-low rounded-lg border border-white/5 min-h-[220px] p-2">
+<canvas id="index-chart" height="200"></canvas>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+const indexData = {{ index_data | tojson }};
+let chart;
+function renderIndex(name) {
+    const d = indexData[name];
+    document.getElementById('index-value').textContent = d.value.toLocaleString();
+    const changeEl = document.getElementById('index-change');
+    const iconEl = document.getElementById('index-change-icon');
+    const up = d.change >= 0;
+    changeEl.textContent = (up ? '+' : '') + d.change + ' (' + (up ? '+' : '') + d.change_pct + '%)';
+    changeEl.className = 'text-label-md ' + (up ? 'text-emerald-400' : 'text-red-400');
+    iconEl.textContent = up ? 'arrow_upward' : 'arrow_downward';
+    iconEl.className = 'material-symbols-outlined text-sm ' + (up ? 'text-emerald-400' : 'text-red-400');
+
+    const ctx = document.getElementById('index-chart').getContext('2d');
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: { labels: d.labels, datasets: [{
+            data: d.prices, borderColor: up ? '#10B981' : '#EF4444', borderWidth: 2,
+            backgroundColor: up ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', fill: true, tension: 0.35, pointRadius: 0
+        }]},
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+            scales: { x: { display: false }, y: { display: false } } }
+    });
+}
+document.querySelectorAll('.index-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.index-tab').forEach(b => b.className = 'index-tab px-md py-sm border-b-2 border-transparent text-on-surface-variant hover:text-on-surface text-label-md whitespace-nowrap');
+        btn.className = 'index-tab px-md py-sm border-b-2 border-primary text-primary text-label-md whitespace-nowrap';
+        renderIndex(btn.dataset.index);
+    });
+});
+renderIndex("{{ index_names[0] }}");
+</script>
+{% endblock %}

@@ -1,0 +1,143 @@
+<div class="appbg-advisor" aria-hidden="true">
+<style>
+.appbg-advisor { position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none; }
+.appbg-advisor canvas{position:fixed;inset:0;width:100%;height:100%;}
+.appbg-advisor .ui{position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 75% 65% at 50% 40%,rgba(34,211,238,0.09),transparent 65%),
+             radial-gradient(ellipse 40% 40% at 90% 80%,rgba(99,102,241,0.08),transparent 55%);}
+</style>
+<canvas id="c-advisor"></canvas>
+<div class="ui"></div>
+</div>
+<script>
+(function(){
+  const __reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cv=document.getElementById('c-advisor'),ctx=cv.getContext('2d');
+let W=cv.width=innerWidth,H=cv.height=innerHeight;
+window.addEventListener('resize',()=>{W=cv.width=innerWidth;H=cv.height=innerHeight;});
+const r=(a,b)=>a+Math.random()*(b-a);
+const P=['#22d3ee','#6366f1','#8b5cf6','#10b981','#38bdf8'];
+
+// Humanoid advisor bots
+class AdvisorBot{
+  constructor(init){
+    this.x=r(60,W-60);this.y=init?r(0,H):H+130;
+    this.scale=r(0.5,1.2);this.vy=-r(0.2,0.55);this.vx=r(-0.15,0.15);
+    this.c=P[~~r(0,P.length)];this.a=r(0.18,0.45);
+    this.pt=r(0,6.28);this.pv=r(0.01,0.03);
+    this.armT=r(0,6.28);this.legT=r(0,6.28);
+    this.holding=['$','📈','₹','%','▲'][~~r(0,5)];
+  }
+  tick(){
+    this.y+=this.vy;this.x+=this.vx;this.pt+=this.pv;
+    this.armT+=0.04;this.legT+=0.06;
+    if(this.y<-150){this.y=H+130;this.x=r(60,W-60);}
+  }
+  draw(){
+    const p=0.75+0.25*Math.sin(this.pt),sc=this.scale;
+    ctx.save();ctx.translate(this.x,this.y);ctx.scale(sc,sc);
+    ctx.globalAlpha=this.a*p;
+    // glow behind
+    const g=ctx.createRadialGradient(0,-10,5,0,-10,55);
+    g.addColorStop(0,this.c+'33');g.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(0,-10,55,0,6.28);ctx.fillStyle=g;ctx.fill();
+    // legs
+    const la=Math.sin(this.legT)*18;
+    [[la,-la],[-la,la]].forEach(([a1,a2])=>{
+      ctx.save();ctx.translate(0,30);ctx.rotate(a1*Math.PI/180);
+      ctx.strokeStyle=this.c;ctx.lineWidth=3;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(-8,0);ctx.lineTo(-8,30);ctx.stroke();
+      ctx.beginPath();ctx.arc(-8,30,4,0,6.28);ctx.fillStyle=this.c;ctx.fill();
+      ctx.restore();
+      ctx.save();ctx.translate(0,30);ctx.rotate(a2*Math.PI/180);
+      ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(8,30);ctx.stroke();
+      ctx.beginPath();ctx.arc(8,30,4,0,6.28);ctx.fillStyle=this.c;ctx.fill();
+      ctx.restore();
+    });
+    // torso
+    ctx.beginPath();ctx.roundRect(-14,0,28,32,4);
+    ctx.fillStyle=this.c+'28';ctx.fill();ctx.strokeStyle=this.c;ctx.lineWidth=1.5;ctx.stroke();
+    // arms
+    const aa=Math.sin(this.armT)*22;
+    ctx.save();ctx.translate(-14,8);ctx.rotate(aa*Math.PI/180);
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-22,12);ctx.strokeStyle=this.c;ctx.lineWidth=2.5;ctx.stroke();
+    ctx.beginPath();ctx.arc(-22,12,4,0,6.28);ctx.fillStyle=this.c;ctx.fill();
+    // holding item in left hand
+    ctx.font=`bold 12px monospace`;ctx.fillStyle=this.c;ctx.textAlign='center';ctx.fillText(this.holding,-28,12);
+    ctx.restore();
+    ctx.save();ctx.translate(14,8);ctx.rotate(-aa*Math.PI/180);
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(22,12);ctx.strokeStyle=this.c;ctx.lineWidth=2.5;ctx.stroke();
+    ctx.beginPath();ctx.arc(22,12,4,0,6.28);ctx.fillStyle=this.c;ctx.fill();
+    ctx.restore();
+    // head
+    ctx.beginPath();ctx.arc(0,-18,16,0,6.28);
+    ctx.fillStyle=this.c+'22';ctx.fill();ctx.strokeStyle=this.c;ctx.lineWidth=1.5;ctx.stroke();
+    // visor / face screen
+    ctx.fillStyle=this.c+'44';ctx.fillRect(-10,-24,20,10);
+    ctx.strokeStyle=this.c;ctx.lineWidth=1;ctx.strokeRect(-10,-24,20,10);
+    // scrolling data on visor
+    ctx.fillStyle=this.c;ctx.font=`7px monospace`;ctx.textAlign='center';
+    ctx.fillText(['▲','▼','$','%'][~~(this.pt*2)%4],0,-19);
+    // antenna
+    ctx.beginPath();ctx.moveTo(0,-34);ctx.lineTo(0,-42);ctx.strokeStyle=this.c;ctx.lineWidth=1.2;ctx.stroke();
+    ctx.beginPath();ctx.arc(0,-42,3.5,0,6.28);
+    const ag=ctx.createRadialGradient(0,-42,0,0,-42,5);
+    ag.addColorStop(0,this.c);ag.addColorStop(1,this.c+'00');
+    ctx.fillStyle=ag;ctx.fill();
+    ctx.restore();ctx.globalAlpha=1;
+  }
+}
+
+// Speech bubble bots (advice snippets)
+class BubbleBot{
+  constructor(init){
+    this.x=r(80,W-120);this.y=init?r(0,H):H+80;
+    this.vy=-r(0.25,0.6);this.c=P[~~r(0,P.length)];
+    this.a=r(0.15,0.38);this.pt=r(0,6.28);this.pv=r(0.02,0.04);
+    this.msgs=['BUY','HOLD','SELL','SIP','GROW','RISK','SAFE'][~~r(0,7)];
+    this.w=r(55,90);this.h=32;
+  }
+  tick(){this.y+=this.vy;this.pt+=this.pv;if(this.y<-80){this.y=H+80;this.x=r(80,W-120);}}
+  draw(){
+    const p=0.75+0.25*Math.sin(this.pt);
+    ctx.save();ctx.translate(this.x,this.y);ctx.globalAlpha=this.a*p;
+    // bubble
+    ctx.beginPath();ctx.roundRect(-this.w/2,-this.h/2,this.w,this.h,8);
+    ctx.fillStyle=this.c+'22';ctx.fill();ctx.strokeStyle=this.c;ctx.lineWidth=1.3;ctx.stroke();
+    // tail
+    ctx.beginPath();ctx.moveTo(-6,this.h/2);ctx.lineTo(-14,this.h/2+12);ctx.lineTo(6,this.h/2);ctx.closePath();
+    ctx.fillStyle=this.c+'22';ctx.fill();ctx.strokeStyle=this.c;ctx.lineWidth=1;ctx.stroke();
+    ctx.globalAlpha=this.a*1.5*p;ctx.fillStyle=this.c;
+    ctx.font=`bold ${this.h*.38}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(this.msgs,0,0);
+    ctx.restore();ctx.globalAlpha=1;
+  }
+}
+
+// Data stream particles
+class Stream{
+  constructor(){this.x=r(0,W);this.y=r(-H,H);this.vy=r(0.5,2);this.bits=Array.from({length:~~r(8,20)},()=>~~r(0,2).toString());this.c=P[~~r(0,P.length)];this.a=r(0.08,0.22);this.spacing=14;}
+  tick(){this.y+=this.vy;if(this.y-this.bits.length*this.spacing>H){this.y=r(-200,-50);this.x=r(0,W);}}
+  draw(){
+    ctx.save();ctx.globalAlpha=this.a;ctx.fillStyle=this.c;ctx.font=`10px monospace`;ctx.textAlign='center';
+    this.bits.forEach((b,i)=>{ctx.fillText(b,this.x,this.y-i*this.spacing);});
+    ctx.restore();ctx.globalAlpha=1;
+  }
+}
+
+const advisors=Array.from({length:16},(_,i)=>new AdvisorBot(true));
+const bubbles=Array.from({length:14},(_,i)=>new BubbleBot(true));
+const streams=Array.from({length:18},(_,i)=>new Stream());
+
+function frame(){
+  ctx.fillStyle='#06090f';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(34,211,238,0.04)';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=56){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=56){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  streams.forEach(s=>{s.tick();s.draw();});
+  bubbles.forEach(b=>{b.tick();b.draw();});
+  advisors.forEach(a=>{a.tick();a.draw();});
+  if(!__reduceMotion) requestAnimationFrame(frame);}
+frame();
+})();
+</script>

@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% set active_page = 'tools' %}
+{% block title %}Stocksense AI - Financial Tools{% endblock %}
+{% block content %}
+
+<div>
+<h2 class="text-headline-lg-mobile md:text-headline-lg text-on-surface mb-xs">Financial Calculators</h2>
+<p class="text-on-surface-variant">Simulate systematic investments, lump sum wealth compounding, and broker fee friction.</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+<!-- SIP Calculator -->
+<div class="glass-panel rounded-xl p-lg flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-primary">savings</span>
+<h3 class="text-headline-md">SIP Wealth Builder</h3>
+</div>
+<form id="sip-form" class="space-y-4">
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Monthly Investment (₹ / $)</label>
+<input id="sip-monthly" type="number" value="10000" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Expected Annual Return (%)</label>
+<input id="sip-rate" type="number" step="0.1" value="12" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Duration (Years)</label>
+<input id="sip-years" type="number" value="10" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<button type="submit" class="w-full bg-primary text-on-primary py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">Calculate SIP</button>
+</form>
+</div>
+<div id="sip-result" class="mt-lg pt-md border-t border-white/5 space-y-2 text-sm hidden">
+<div class="flex justify-between"><span class="text-on-surface-variant">Invested:</span><span id="sip-invested" class="font-semibold"></span></div>
+<div class="flex justify-between"><span class="text-on-surface-variant">Estimated Returns:</span><span id="sip-profit" class="font-semibold text-emerald-400"></span></div>
+<div class="flex justify-between"><span class="text-on-surface-variant">Total Maturity:</span><span id="sip-maturity" class="font-bold text-primary"></span></div>
+</div>
+</div>
+
+<!-- Lumpsum Calculator -->
+<div class="glass-panel rounded-xl p-lg flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-secondary">payments</span>
+<h3 class="text-headline-md">Lump Sum Compounding</h3>
+</div>
+<form id="lump-form" class="space-y-4">
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Initial Deposit (₹ / $)</label>
+<input id="lump-amount" type="number" value="100000" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Expected Return (%)</label>
+<input id="lump-rate" type="number" step="0.1" value="12" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Duration (Years)</label>
+<input id="lump-years" type="number" value="10" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<button type="submit" class="w-full bg-secondary text-surface-container-lowest py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">Calculate Growth</button>
+</form>
+</div>
+<div id="lump-result" class="mt-lg pt-md border-t border-white/5 space-y-2 text-sm hidden">
+<div class="flex justify-between"><span class="text-on-surface-variant">Principal:</span><span id="lump-invested" class="font-semibold"></span></div>
+<div class="flex justify-between"><span class="text-on-surface-variant">Wealth Gained:</span><span id="lump-profit" class="font-semibold text-emerald-400"></span></div>
+<div class="flex justify-between"><span class="text-on-surface-variant">Future Value:</span><span id="lump-maturity" class="font-bold text-secondary"></span></div>
+</div>
+</div>
+
+<!-- Brokerage & Taxes Calculator -->
+<div class="glass-panel rounded-xl p-lg flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-tertiary">receipt_long</span>
+<h3 class="text-headline-md">Brokerage &amp; Fees</h3>
+</div>
+<form id="fees-form" class="space-y-4">
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Trade Turnover ($ / ₹)</label>
+<input id="fees-amt" type="number" value="100000" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Brokerage %</label>
+<input id="fees-brok" type="number" step="0.01" value="0.05" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">Stamp Duty %</label>
+<input id="fees-stamp" type="number" step="0.001" value="0.015" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+</div>
+<div>
+<label class="block text-xs uppercase font-semibold text-on-surface-variant mb-1">GST on Brokerage %</label>
+<input id="fees-gst" type="number" value="18" class="w-full bg-surface-container-highest border border-white/10 rounded-lg p-2.5 text-sm focus:border-primary focus:outline-none"/>
+</div>
+<button type="submit" class="w-full bg-tertiary text-on-tertiary py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">Estimate Friction</button>
+</form>
+</div>
+<div id="fees-result" class="mt-lg pt-md border-t border-white/5 space-y-2 text-sm hidden">
+<div class="flex justify-between"><span class="text-on-surface-variant">Brokerage Fee:</span><span id="res-brokerage" class="font-semibold"></span></div>
+<div class="flex justify-between"><span class="text-on-surface-variant">Taxes (GST + Stamp):</span><span id="res-taxes" class="font-semibold"></span></div>
+<div class="flex justify-between"><span class="text-on-surface-variant">Total Charges:</span><span id="res-total" class="font-bold text-red-400"></span></div>
+<div class="flex justify-between"><span class="text-on-surface-variant">Net Retained:</span><span id="res-net" class="font-bold text-emerald-400"></span></div>
+</div>
+</div>
+</div>
+
+<script>
+document.getElementById('sip-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const monthly = document.getElementById('sip-monthly').value;
+    const return_pct = document.getElementById('sip-rate').value;
+    const years = document.getElementById('sip-years').value;
+    const res = await fetch('/api/calc/sip', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({monthly, return_pct, years})
+    });
+    const d = await res.json();
+    if(d.ok) {
+        document.getElementById('sip-invested').textContent = d.invested.toLocaleString();
+        document.getElementById('sip-profit').textContent = '+' + d.profit.toLocaleString();
+        document.getElementById('sip-maturity').textContent = d.maturity.toLocaleString();
+        document.getElementById('sip-result').classList.remove('hidden');
+    }
+});
+
+document.getElementById('lump-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const amount = document.getElementById('lump-amount').value;
+    const return_pct = document.getElementById('lump-rate').value;
+    const years = document.getElementById('lump-years').value;
+    const res = await fetch('/api/calc/lumpsum', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({amount, return_pct, years})
+    });
+    const d = await res.json();
+    if(d.ok) {
+        document.getElementById('lump-invested').textContent = d.invested.toLocaleString();
+        document.getElementById('lump-profit').textContent = '+' + d.profit.toLocaleString();
+        document.getElementById('lump-maturity').textContent = d.maturity.toLocaleString();
+        document.getElementById('lump-result').classList.remove('hidden');
+    }
+});
+
+document.getElementById('fees-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const amount = document.getElementById('fees-amt').value;
+    const brokerage = document.getElementById('fees-brok').value;
+    const stamp_duty = document.getElementById('fees-stamp').value;
+    const gst = document.getElementById('fees-gst').value;
+    const res = await fetch('/api/calc/fees', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({amount, brokerage, stamp_duty, gst})
+    });
+    const d = await res.json();
+    if(d.ok) {
+        document.getElementById('res-brokerage').textContent = d.brokerage.toLocaleString();
+        document.getElementById('res-taxes').textContent = (d.gst + d.stamp_duty).toLocaleString();
+        document.getElementById('res-total').textContent = '-' + d.total_fees.toLocaleString();
+        document.getElementById('res-net').textContent = d.net_capital.toLocaleString();
+        document.getElementById('fees-result').classList.remove('hidden');
+    }
+});
+</script>
+{% endblock %}
